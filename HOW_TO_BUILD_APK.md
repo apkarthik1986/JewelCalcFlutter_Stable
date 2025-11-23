@@ -53,7 +53,7 @@ flutter build apk --release
 **Best for**: Local development with full control
 
 ### Prerequisites:
-- Flutter SDK (version 3.24.3 or later)
+- Flutter SDK (latest stable version recommended)
 - Android Studio (or Android SDK)
 - Java 17 or later
 
@@ -61,7 +61,7 @@ flutter build apk --release
 
 ```bash
 # 1. Clone the repository (if not done already)
-git clone https://github.com/apkarthik1986/MyFlutter.git
+git clone <your-repository-url>
 cd MyFlutter
 
 # 2. Install dependencies
