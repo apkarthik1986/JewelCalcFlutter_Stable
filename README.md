@@ -1,6 +1,6 @@
-# MyFlutter
+# MyFlutter - Jewel Calc
 
-A Flutter Android application that can be built using GitHub Codespaces and GitHub Actions.
+A Flutter Android application for jewellery invoicing that can be built using GitHub Codespaces and GitHub Actions.
 
 ## 🎯 **[→ How to Build APK File](HOW_TO_BUILD_APK.md)** ← Start Here!
 
@@ -12,12 +12,70 @@ A Flutter Android application that can be built using GitHub Codespaces and GitH
 - **[Troubleshooting Guide](TROUBLESHOOTING.md)** - Fix common issues
 - **[GitHub Actions Workflows](.github/workflows/README.md)** - CI/CD documentation
 
-## 📱 Features
+## 💎 Features
 
-- Simple counter app built with Flutter
-- Material Design 3
-- Automated builds via GitHub Actions
-- Development environment ready in GitHub Codespaces
+### Jewellery Invoicing Application
+- **Multiple Gold Types Support**: Calculate for Gold 22K/916, 20K/833, 18K/750, and Silver
+- **Separate Wastage Settings**: Different wastage percentages for gold and silver
+- **Real-time Calculations**: Automatic calculation of jewellery amounts, making charges, and GST
+- **Discount Options**: Apply discounts in rupees or percentage
+- **Configurable Base Values**: Easily adjust gold/silver rates, wastage percentages, and making charges
+- **Customer Information**: Capture bill number, customer details, and contact information
+- **PDF Invoice Generation**: Generate professional invoices with thermal printer support
+- **Daily Persistence**: Base values persist throughout the day and automatically reset at midnight
+- **Material Design 3**: Clean, modern Android interface
+- **Automated builds via GitHub Actions**
+- **Development environment ready in GitHub Codespaces**
+
+## 📖 How to Use
+
+### Configure Base Values
+1. Open the app and tap the **Settings** icon (⚙️) in the app bar
+2. Set metal rates for different gold purities and silver
+3. Configure wastage percentages for gold and silver
+4. Set making charges per gram for gold and silver
+5. Tap **Save** to store your configuration
+
+**Note**: Base values persist throughout the day and automatically reset to zero at midnight.
+
+### Create an Estimate
+
+#### Step 1: Enter Customer Information
+- Expand the "Customer Information" section
+- Fill in bill number, account number, customer name, address, and mobile number
+
+#### Step 2: Calculate Item Details
+1. **Select Type**: Choose from Gold 22K/916, 20K/833, 18K/750, or Silver
+2. **Enter Weight**: Input the gross weight in grams
+3. **Enter Wastage**: Wastage is auto-calculated based on settings (can be adjusted)
+4. **Review Net Weight**: Automatically calculated (Weight + Wastage)
+
+#### Step 3: Configure Making Charges
+- Choose between "Rupees" or "Percentage" mode
+- System applies minimum making charges (₹250 for gold, ₹200 for silver)
+- Adjust manually if needed
+
+#### Step 4: Apply Discount (Optional)
+- Select discount type: None, Rupees, or Percentage
+- Enter discount amount or percentage
+- View amount after discount
+
+#### Step 5: Review and Generate Invoice
+- Review CGST and SGST (1.5% each)
+- Check final amount including GST
+- Tap **Download PDF** to generate and share invoice
+
+## 🎯 Calculation Formula
+
+```
+Net Weight = Gross Weight + Wastage
+J Amount = Net Weight × Rate per gram
+Subtotal = J Amount + Making Charges
+Amount After Discount = Subtotal - Discount
+CGST = Amount After Discount × 1.5%
+SGST = Amount After Discount × 1.5%
+Total Amount = Amount After Discount + CGST + SGST
+```
 
 ## 🚀 Quick Start
 
@@ -112,7 +170,7 @@ MyFlutter/
 │   └── workflows/          # GitHub Actions workflows
 ├── android/                # Android-specific files
 ├── lib/
-│   └── main.dart          # Main Flutter application
+│   └── main.dart          # Main Flutter application - Jewel Calc
 ├── test/                   # Test files
 ├── pubspec.yaml           # Flutter dependencies
 └── README.md              # This file
@@ -125,6 +183,31 @@ MyFlutter/
 - **Min Android SDK**: 21 (Android 5.0)
 - **Target Android SDK**: 34 (Android 14)
 
+### Default Values
+
+- Gold 22K/916: ₹0/gram (configurable in settings)
+- Gold 20K/833: ₹0/gram (configurable in settings)
+- Gold 18K/750: ₹0/gram (configurable in settings)
+- Silver: ₹0/gram (configurable in settings)
+- Gold Wastage: 0% (configurable in settings)
+- Silver Wastage: 0% (configurable in settings)
+- Gold Making Charges: ₹0/gram (configurable in settings)
+- Silver Making Charges: ₹0/gram (configurable in settings)
+- Minimum Gold MC: ₹250
+- Minimum Silver MC: ₹200
+- GST: 3% (1.5% CGST + 1.5% SGST)
+
+All base values are automatically saved and persist throughout the day. They reset to zero at midnight for fresh daily configuration.
+
+## 💾 Data Persistence
+
+The application automatically saves your base values (metal rates, wastage percentages, and making charges) to local storage using SharedPreferences. This ensures that:
+
+- **Your settings persist** across app restarts
+- **Values are maintained** throughout the entire day
+- **Automatic reset** occurs at midnight (based on system time)
+- **No manual intervention** needed - the app handles everything automatically
+
 ## 📝 License
 
-This is a sample Flutter application for demonstration purposes.
+This is a jewellery invoicing application for personal and commercial use.
