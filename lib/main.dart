@@ -508,6 +508,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   wastageGm = weightGm *
                       (isGold ? goldWastagePercentage : silverWastagePercentage) /
                       100;
+                  wastageController.text = wastageGm.toStringAsFixed(3);
                   makingCharges = _calculateMakingCharges();
                 });
               },
@@ -543,6 +544,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                                 ? goldWastagePercentage
                                 : silverWastagePercentage) /
                             100;
+                        wastageController.text = wastageGm.toStringAsFixed(3);
                         makingCharges = _calculateMakingCharges();
                       });
                     },
