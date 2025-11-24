@@ -52,6 +52,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   final TextEditingController customerNameController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
   final TextEditingController mobileNumberController = TextEditingController();
+  final TextEditingController weightController = TextEditingController();
+  final TextEditingController wastageController = TextEditingController();
+  final TextEditingController makingChargesController = TextEditingController();
   
   String selectedType = 'Gold 22K/916';
   double weightGm = 0.0;
@@ -142,6 +145,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       customerNameController.clear();
       addressController.clear();
       mobileNumberController.clear();
+      weightController.clear();
+      wastageController.clear();
+      makingChargesController.clear();
       weightGm = 0.0;
       wastageGm = 0.0;
       makingCharges = 0.0;
@@ -364,8 +370,8 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _generatePdf,
-                icon: const Icon(Icons.picture_as_pdf),
-                label: const Text('Download PDF'),
+                icon: const Icon(Icons.print),
+                label: const Text('Print'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.all(16),
                 ),
@@ -462,7 +468,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   wastageGm = weightGm *
                       (isGold ? goldWastagePercentage : silverWastagePercentage) /
                       100;
+                  wastageController.text = wastageGm.toStringAsFixed(3);
                   makingCharges = _calculateMakingCharges();
+                  makingChargesController.text = makingCharges.toStringAsFixed(2);
                 });
               },
             ),
@@ -483,6 +491,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
               children: [
                 Expanded(
                   child: TextField(
+                    controller: weightController,
                     decoration: const InputDecoration(
                       labelText: 'Weight (gm)',
                       border: OutlineInputBorder(),
@@ -496,7 +505,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                                 ? goldWastagePercentage
                                 : silverWastagePercentage) /
                             100;
+                        wastageController.text = wastageGm.toStringAsFixed(3);
                         makingCharges = _calculateMakingCharges();
+                        makingChargesController.text = makingCharges.toStringAsFixed(2);
                       });
                     },
                   ),
@@ -504,10 +515,10 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
-                    decoration: InputDecoration(
+                    controller: wastageController,
+                    decoration: const InputDecoration(
                       labelText: 'Wastage (gm)',
-                      border: const OutlineInputBorder(),
-                      hintText: wastageGm.toStringAsFixed(3),
+                      border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
                     onChanged: (value) {
@@ -574,16 +585,17 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                 setState(() {
                   mcType = newSelection.first;
                   makingCharges = _calculateMakingCharges();
+                  makingChargesController.text = makingCharges.toStringAsFixed(2);
                 });
               },
             ),
             const SizedBox(height: 12),
             if (mcType == 'Rupees')
               TextField(
-                decoration: InputDecoration(
+                controller: makingChargesController,
+                decoration: const InputDecoration(
                   labelText: 'Making Charges (₹)',
-                  border: const OutlineInputBorder(),
-                  hintText: _calculateMakingCharges().toStringAsFixed(2),
+                  border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
                 onChanged: (value) {
@@ -591,6 +603,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                     makingCharges = double.tryParse(value) ?? minMakingCharge;
                     if (makingCharges < minMakingCharge) {
                       makingCharges = minMakingCharge;
+                      makingChargesController.text = makingCharges.toStringAsFixed(2);
                     }
                   });
                 },
@@ -609,6 +622,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                       setState(() {
                         mcPercentage = double.tryParse(value) ?? 0.0;
                         makingCharges = _calculateMakingCharges();
+                        makingChargesController.text = makingCharges.toStringAsFixed(2);
                       });
                     },
                   ),
@@ -873,7 +887,6 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
           TextButton(
             onPressed: () async {
               await _resetToDefaults();
-              Navigator.of(context).pop();
               setState(() {});
             },
             child: const Text('Reset to Defaults'),
@@ -902,6 +915,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     customerNameController.dispose();
     addressController.dispose();
     mobileNumberController.dispose();
+    weightController.dispose();
+    wastageController.dispose();
+    makingChargesController.dispose();
     super.dispose();
   }
 }
