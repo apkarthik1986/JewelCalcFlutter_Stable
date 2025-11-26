@@ -250,7 +250,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
           return pw.Padding(
             padding: const pw.EdgeInsets.all(10),
             child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
               children: [
                 pw.Center(
                   child: pw.Text('ESTIMATE',
@@ -885,10 +885,11 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   void _showSettingsDialog() {
     // Update controllers with current values before showing dialog
     _updateSettingsControllers();
+    final scaffoldContext = context;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('⚙️ Base Values Configuration'),
         content: SingleChildScrollView(
           child: Column(
@@ -984,14 +985,20 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             child: const Text('Reset to Defaults'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
               await _saveBaseValues();
-              Navigator.of(context).pop();
+              Navigator.of(dialogContext).pop();
               setState(() {});
+              ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                const SnackBar(
+                  content: Text('Settings saved successfully!'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
             },
             child: const Text('Save'),
           ),
