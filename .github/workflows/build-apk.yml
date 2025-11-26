@@ -28,12 +28,15 @@ jobs:
       with:
         flutter-version: '3.24.3'
         channel: 'stable'
+    
+    - name: Clean Flutter
+      run: flutter clean
         
     - name: Get dependencies
       run: flutter pub get
       
     - name: Run tests
-      run: flutter test --no-sound-null-safety || true
+      run: flutter test || true
       
     - name: Create debug keystore
       run: |
