@@ -237,6 +237,24 @@ For **Physical Device**:
 4. Check Android version compatibility:
    - Min SDK is 21 (Android 5.0)
 
+### App Not Installed - "Package appears to be invalid"
+
+**Symptom**: Installation fails with error message "App not installed as the package appear to be invalid"
+
+**Root Cause**: The AndroidManifest.xml is missing the required `package` attribute in the `<manifest>` tag.
+
+**Solution**: 
+This issue has been fixed! The `package` attribute has been added to AndroidManifest.xml. If you encounter this error:
+1. Ensure your AndroidManifest.xml has the package attribute:
+   ```xml
+   <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+       package="com.example.myflutter">
+   ```
+2. Verify the package name matches the `applicationId` in `android/app/build.gradle`
+3. Rebuild the APK: `flutter clean && flutter build apk --release`
+
+**Technical Details**: While Android Gradle Plugin 7.0+ supports using `namespace` in build.gradle, the `package` attribute in AndroidManifest.xml is still required for proper APK validation and installation on many Android devices and tools.
+
 ### App Update Fails - "App not installed" or "Signature mismatch"
 
 **Symptom**: Cannot update installed app, need to uninstall first
