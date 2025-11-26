@@ -24,6 +24,7 @@ dev_dependencies:
 dependency_overrides:
   win32: ^5.0.0
   archive: ^4.0.0
+  typed_data: ^1.4.0
 
 flutter:
   uses-material-design: true
