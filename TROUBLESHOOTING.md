@@ -255,40 +255,6 @@ This issue has been fixed! The `package` attribute has been added to AndroidMani
 
 **Technical Details**: While Android Gradle Plugin 7.0+ supports using `namespace` in build.gradle, the `package` attribute in AndroidManifest.xml is still required for proper APK validation and installation on many Android devices and tools.
 
-### App Update Fails - "App not installed" or "Signature mismatch"
-
-**Symptom**: Cannot update installed app, need to uninstall first
-
-**Root Cause**: The new APK is signed with a different keystore than the installed version.
-
-**Solution**:
-1. **For developers**: Set up a release keystore to ensure consistent signing
-   - See [KEYSTORE_SETUP.md](KEYSTORE_SETUP.md) for detailed instructions
-   - Once configured, all future builds will use the same signature
-2. **For current users**: One-time uninstall required
-   - Uninstall the old version
-   - Install the new properly-signed version
-   - Future updates will work seamlessly
-3. **Quick setup**:
-   ```bash
-   # Generate keystore (do this once)
-   keytool -genkey -v -keystore ~/upload-keystore.jks \
-     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
-   
-   # Create key.properties in android/ directory
-   cat > android/key.properties << EOF
-   storePassword=YOUR_PASSWORD
-   keyPassword=YOUR_PASSWORD
-   keyAlias=upload
-   storeFile=/path/to/upload-keystore.jks
-   EOF
-   
-   # Build with release signing
-   flutter build apk --release
-   ```
-
-**Prevention**: Always use the same keystore for all releases. Back up your keystore securely!
-
 ---
 
 ## 🔍 Dependency Issues
