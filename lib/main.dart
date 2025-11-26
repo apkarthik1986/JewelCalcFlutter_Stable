@@ -40,12 +40,12 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     'Gold 18K/750': 0.0,
     'Silver': 0.0,
   };
-  
+
   double goldWastagePercentage = 0.0;
   double silverWastagePercentage = 0.0;
   double goldMcPerGm = 0.0;
   double silverMcPerGm = 0.0;
-  
+
   // Form fields
   final TextEditingController billNumberController = TextEditingController();
   final TextEditingController customerAccController = TextEditingController();
@@ -55,14 +55,14 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   final TextEditingController weightController = TextEditingController();
   final TextEditingController wastageController = TextEditingController();
   final TextEditingController makingChargesController = TextEditingController();
-  
+
   // Settings dialog controllers
   final Map<String, TextEditingController> metalRateControllers = {};
   late final TextEditingController goldWastageController;
   late final TextEditingController silverWastageController;
   late final TextEditingController goldMcController;
   late final TextEditingController silverMcController;
-  
+
   String selectedType = 'Gold 22K/916';
   double weightGm = 0.0;
   double wastageGm = 0.0;
@@ -107,20 +107,25 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       silverWastagePercentage = prefs.getDouble('silver_wastage') ?? 0.0;
       goldMcPerGm = prefs.getDouble('gold_mc') ?? 0.0;
       silverMcPerGm = prefs.getDouble('silver_mc') ?? 0.0;
-      
+
       // Update controllers with loaded values
       _updateSettingsControllers();
     });
   }
-  
+
   void _updateSettingsControllers() {
     for (var entry in metalRates.entries) {
-      metalRateControllers[entry.key]!.text = entry.value == 0.0 ? '' : entry.value.toString();
+      metalRateControllers[entry.key]!.text =
+          entry.value == 0.0 ? '' : entry.value.toString();
     }
-    goldWastageController.text = goldWastagePercentage == 0.0 ? '' : goldWastagePercentage.toString();
-    silverWastageController.text = silverWastagePercentage == 0.0 ? '' : silverWastagePercentage.toString();
+    goldWastageController.text =
+        goldWastagePercentage == 0.0 ? '' : goldWastagePercentage.toString();
+    silverWastageController.text = silverWastagePercentage == 0.0
+        ? ''
+        : silverWastagePercentage.toString();
     goldMcController.text = goldMcPerGm == 0.0 ? '' : goldMcPerGm.toString();
-    silverMcController.text = silverMcPerGm == 0.0 ? '' : silverMcPerGm.toString();
+    silverMcController.text =
+        silverMcPerGm == 0.0 ? '' : silverMcPerGm.toString();
   }
 
   Future<void> _saveBaseValues() async {
@@ -153,7 +158,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       silverWastagePercentage = 0.0;
       goldMcPerGm = 0.0;
       silverMcPerGm = 0.0;
-      
+
       // Reset controllers
       for (var controller in metalRateControllers.values) {
         controller.text = '';
@@ -196,13 +201,13 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   }
 
   double get netWeightGm => weightGm + wastageGm;
-  
+
   double get ratePerGram => metalRates[selectedType] ?? 0.0;
-  
+
   double get jAmount => netWeightGm * ratePerGram;
-  
+
   bool get isGold => selectedType.contains('Gold');
-  
+
   double get minMakingCharge => isGold ? 250.0 : 200.0;
 
   double _calculateMakingCharges() {
@@ -247,129 +252,136 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-              pw.Center(
-                child: pw.Text('ESTIMATE',
+                pw.Center(
+                  child: pw.Text('ESTIMATE',
+                      style: pw.TextStyle(
+                          fontSize: 21, fontWeight: pw.FontWeight.bold)),
+                ),
+                pw.SizedBox(height: 5),
+                pw.Center(
+                  child: pw.Text(
+                      DateFormat('dd/MM/yyyy HH:mm:ss').format(DateTime.now()),
+                      style: const pw.TextStyle(fontSize: 15)),
+                ),
+                pw.Divider(),
+                if (billNumberController.text.isNotEmpty)
+                  pw.Text('Bill No: ${billNumberController.text}',
+                      style: const pw.TextStyle(fontSize: 16)),
+                if (customerAccController.text.isNotEmpty)
+                  pw.Text('Acc No: ${customerAccController.text}',
+                      style: const pw.TextStyle(fontSize: 16)),
+                if (customerNameController.text.isNotEmpty)
+                  pw.Text('Name: ${customerNameController.text}',
+                      style: const pw.TextStyle(fontSize: 16)),
+                if (addressController.text.isNotEmpty)
+                  pw.Text('Address: ${addressController.text}',
+                      style: const pw.TextStyle(fontSize: 16)),
+                if (mobileNumberController.text.isNotEmpty)
+                  pw.Text('Mobile: ${mobileNumberController.text}',
+                      style: const pw.TextStyle(fontSize: 16)),
+                pw.Divider(),
+                pw.Text('ITEM DETAILS',
                     style: pw.TextStyle(
-                        fontSize: 21, fontWeight: pw.FontWeight.bold)),
-              ),
-              pw.SizedBox(height: 5),
-              pw.Center(
-                child: pw.Text(
-                    DateFormat('dd/MM/yyyy HH:mm:ss').format(DateTime.now()),
-                    style: const pw.TextStyle(fontSize: 15)),
-              ),
-              pw.Divider(),
-              if (billNumberController.text.isNotEmpty)
-                pw.Text('Bill No: ${billNumberController.text}',
+                        fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                pw.Text('Type: $selectedType',
                     style: const pw.TextStyle(fontSize: 16)),
-              if (customerAccController.text.isNotEmpty)
-                pw.Text('Acc No: ${customerAccController.text}',
+                pw.Text('Rate: Rs.$ratePerGram/gm',
                     style: const pw.TextStyle(fontSize: 16)),
-              if (customerNameController.text.isNotEmpty)
-                pw.Text('Name: ${customerNameController.text}',
+                pw.Text('Weight: ${weightGm.toStringAsFixed(3)} gm',
                     style: const pw.TextStyle(fontSize: 16)),
-              if (addressController.text.isNotEmpty)
-                pw.Text('Address: ${addressController.text}',
+                pw.Text('Wastage: ${wastageGm.toStringAsFixed(3)} gm',
                     style: const pw.TextStyle(fontSize: 16)),
-              if (mobileNumberController.text.isNotEmpty)
-                pw.Text('Mobile: ${mobileNumberController.text}',
-                    style: const pw.TextStyle(fontSize: 16)),
-              pw.Divider(),
-              pw.Text('ITEM DETAILS',
-                  style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-              pw.Text('Type: $selectedType',
-                  style: const pw.TextStyle(fontSize: 16)),
-              pw.Text('Rate: Rs.$ratePerGram/gm',
-                  style: const pw.TextStyle(fontSize: 16)),
-              pw.Text('Weight: ${weightGm.toStringAsFixed(3)} gm',
-                  style: const pw.TextStyle(fontSize: 16)),
-              pw.Text('Wastage: ${wastageGm.toStringAsFixed(3)} gm',
-                  style: const pw.TextStyle(fontSize: 16)),
-              pw.Text('Net Weight: ${netWeightGm.toStringAsFixed(3)} gm',
-                  style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-              pw.Divider(),
-              pw.Text('AMOUNT CALCULATION',
-                  style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('J Amount:',
-                      style: const pw.TextStyle(fontSize: 16)),
-                  pw.Text('Rs.${jAmount.round()}',
-                      style: const pw.TextStyle(fontSize: 16)),
-                ],
-              ),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Making Charges:',
-                      style: const pw.TextStyle(fontSize: 16)),
-                  pw.Text('Rs.${makingCharges.toStringAsFixed(2)}',
-                      style: const pw.TextStyle(fontSize: 16)),
-                ],
-              ),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Amount:',
-                      style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Rs.${amountBeforeGst.round()}',
-                      style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                ],
-              ),
-              if (actualDiscountAmount > 0) ...[
+                pw.Text('Net Weight: ${netWeightGm.toStringAsFixed(3)} gm',
+                    style: pw.TextStyle(
+                        fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                pw.Divider(),
+                pw.Text('AMOUNT CALCULATION',
+                    style: pw.TextStyle(
+                        fontSize: 16, fontWeight: pw.FontWeight.bold)),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('Discount:',
+                    pw.Text('J Amount:',
                         style: const pw.TextStyle(fontSize: 16)),
-                    pw.Text('Rs.${actualDiscountAmount.toStringAsFixed(2)}',
+                    pw.Text('Rs.${jAmount.round()}',
                         style: const pw.TextStyle(fontSize: 16)),
                   ],
                 ),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('After Discount:',
-                        style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                    pw.Text('Rs.${amountAfterDiscount.toStringAsFixed(2)}',
-                        style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Making Charges:',
+                        style: const pw.TextStyle(fontSize: 16)),
+                    pw.Text('Rs.${makingCharges.toStringAsFixed(2)}',
+                        style: const pw.TextStyle(fontSize: 16)),
+                  ],
+                ),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Amount:',
+                        style: pw.TextStyle(
+                            fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Rs.${amountBeforeGst.round()}',
+                        style: pw.TextStyle(
+                            fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+                if (actualDiscountAmount > 0) ...[
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Discount:',
+                          style: const pw.TextStyle(fontSize: 16)),
+                      pw.Text('Rs.${actualDiscountAmount.toStringAsFixed(2)}',
+                          style: const pw.TextStyle(fontSize: 16)),
+                    ],
+                  ),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('After Discount:',
+                          style: pw.TextStyle(
+                              fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('Rs.${amountAfterDiscount.toStringAsFixed(2)}',
+                          style: pw.TextStyle(
+                              fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                    ],
+                  ),
+                ],
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('CGST 1.5%:',
+                        style: const pw.TextStyle(fontSize: 16)),
+                    pw.Text('Rs.${cgstAmount.toStringAsFixed(2)}',
+                        style: const pw.TextStyle(fontSize: 16)),
+                  ],
+                ),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('SGST 1.5%:',
+                        style: const pw.TextStyle(fontSize: 16)),
+                    pw.Text('Rs.${sgstAmount.toStringAsFixed(2)}',
+                        style: const pw.TextStyle(fontSize: 16)),
+                  ],
+                ),
+                pw.Divider(),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('T.Amount:',
+                        style: pw.TextStyle(
+                            fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Rs.${finalAmount.round()}',
+                        style: pw.TextStyle(
+                            fontSize: 20, fontWeight: pw.FontWeight.bold)),
                   ],
                 ),
               ],
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('CGST 1.5%:',
-                      style: const pw.TextStyle(fontSize: 16)),
-                  pw.Text('Rs.${cgstAmount.toStringAsFixed(2)}',
-                      style: const pw.TextStyle(fontSize: 16)),
-                ],
-              ),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('SGST 1.5%:',
-                      style: const pw.TextStyle(fontSize: 16)),
-                  pw.Text('Rs.${sgstAmount.toStringAsFixed(2)}',
-                      style: const pw.TextStyle(fontSize: 16)),
-                ],
-              ),
-              pw.Divider(),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('T.Amount:',
-                      style: pw.TextStyle(
-                          fontSize: 20, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Rs.${finalAmount.round()}',
-                      style: pw.TextStyle(
-                          fontSize: 20, fontWeight: pw.FontWeight.bold)),
-                ],
-              ),
-            ],
-          ),
-        );
+            ),
+          );
         },
       ),
     );
@@ -384,10 +396,10 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Row(
+        title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
-          children: [
+          children: const [
             Text('💎 Jewel Calc 💎'),
           ],
         ),
@@ -525,7 +537,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                 setState(() {
                   selectedType = value!;
                   wastageGm = weightGm *
-                      (isGold ? goldWastagePercentage : silverWastagePercentage) /
+                      (isGold
+                          ? goldWastagePercentage
+                          : silverWastagePercentage) /
                       100;
                   wastageController.text = wastageGm.toStringAsFixed(3);
                   makingCharges = _calculateMakingCharges();
@@ -597,8 +611,8 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
               ),
               child: Text(
                 'Net Weight: ${netWeightGm.toStringAsFixed(3)} gm',
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -636,7 +650,8 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             SegmentedButton<String>(
               segments: const [
                 ButtonSegment(value: 'Rupees', label: Text('Rupees (₹)')),
-                ButtonSegment(value: 'Percentage', label: Text('Percentage (%)')),
+                ButtonSegment(
+                    value: 'Percentage', label: Text('Percentage (%)')),
               ],
               selected: {mcType},
               onSelectionChanged: (Set<String> newSelection) {
@@ -660,7 +675,8 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                     keyboardType: TextInputType.number,
                     onChanged: (value) {
                       setState(() {
-                        makingCharges = double.tryParse(value) ?? minMakingCharge;
+                        makingCharges =
+                            double.tryParse(value) ?? minMakingCharge;
                         if (makingCharges < minMakingCharge) {
                           makingCharges = minMakingCharge;
                         }
@@ -745,7 +761,8 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
               segments: const [
                 ButtonSegment(value: 'None', label: Text('None')),
                 ButtonSegment(value: 'Rupees', label: Text('Rupees (₹)')),
-                ButtonSegment(value: 'Percentage', label: Text('Percentage (%)')),
+                ButtonSegment(
+                    value: 'Percentage', label: Text('Percentage (%)')),
               ],
               selected: {discountType},
               onSelectionChanged: (Set<String> newSelection) {
@@ -868,7 +885,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   void _showSettingsDialog() {
     // Update controllers with current values before showing dialog
     _updateSettingsControllers();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
