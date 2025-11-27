@@ -123,10 +123,13 @@ void main() {
     expect(find.text('Add Item to List'), findsOneWidget);
     expect(find.byIcon(Icons.add_shopping_cart), findsOneWidget);
 
+    // Scroll to make the button visible
+    final addItemButtonFinder = find.byKey(const Key('add_item_button'));
+    await tester.ensureVisible(addItemButtonFinder);
+    await tester.pumpAndSettle();
+
     // Verify button is disabled when no weight is entered
-    final addItemButton = tester.widget<ElevatedButton>(
-      find.widgetWithText(ElevatedButton, 'Add Item to List'),
-    );
+    final addItemButton = tester.widget<ElevatedButton>(addItemButtonFinder);
     expect(addItemButton.onPressed, isNull);
   });
 
@@ -138,10 +141,13 @@ void main() {
     await tester.enterText(weightField, '10');
     await tester.pumpAndSettle();
 
+    // Scroll to make the button visible
+    final addItemButtonFinder = find.byKey(const Key('add_item_button'));
+    await tester.ensureVisible(addItemButtonFinder);
+    await tester.pumpAndSettle();
+
     // Verify Add Item button is now enabled
-    final addItemButton = tester.widget<ElevatedButton>(
-      find.widgetWithText(ElevatedButton, 'Add Item to List'),
-    );
+    final addItemButton = tester.widget<ElevatedButton>(addItemButtonFinder);
     expect(addItemButton.onPressed, isNotNull);
   });
 
@@ -156,8 +162,11 @@ void main() {
     await tester.enterText(weightField, '10');
     await tester.pumpAndSettle();
 
-    // Tap Add Item button
-    await tester.tap(find.text('Add Item to List'));
+    // Scroll to and tap Add Item button
+    final addItemButton = find.byKey(const Key('add_item_button'));
+    await tester.ensureVisible(addItemButton);
+    await tester.pumpAndSettle();
+    await tester.tap(addItemButton);
     await tester.pumpAndSettle();
 
     // Verify Added Items section now appears
@@ -175,14 +184,21 @@ void main() {
     await tester.enterText(weightField, '10');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add Item to List'));
+    // Scroll to and tap Add Item button
+    final addItemButton = find.byKey(const Key('add_item_button'));
+    await tester.ensureVisible(addItemButton);
+    await tester.pumpAndSettle();
+    await tester.tap(addItemButton);
     await tester.pumpAndSettle();
 
     // Verify Added Items section exists
     expect(find.textContaining('Added Items'), findsOneWidget);
 
-    // Tap delete button
-    await tester.tap(find.byIcon(Icons.delete));
+    // Scroll to and tap delete button
+    final deleteButton = find.byIcon(Icons.delete);
+    await tester.ensureVisible(deleteButton);
+    await tester.pumpAndSettle();
+    await tester.tap(deleteButton);
     await tester.pumpAndSettle();
 
     // Verify Added Items section is gone
@@ -197,7 +213,11 @@ void main() {
     await tester.enterText(weightField, '10');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add Item to List'));
+    // Scroll to and tap Add Item button
+    final addItemButton = find.byKey(const Key('add_item_button'));
+    await tester.ensureVisible(addItemButton);
+    await tester.pumpAndSettle();
+    await tester.tap(addItemButton);
     await tester.pumpAndSettle();
 
     // Verify Added Items section exists

@@ -930,6 +930,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
+                key: const Key('add_item_button'),
                 onPressed: weightGm > 0 ? _addCurrentItem : null,
                 icon: const Icon(Icons.add_shopping_cart),
                 label: const Text('Add Item to List'),
