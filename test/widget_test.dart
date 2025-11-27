@@ -163,7 +163,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Scroll to and tap Add Item button
-    final addItemButton = find.text('Add Item to List');
+    final addItemButton = find.byKey(const Key('add_item_button'));
     await tester.ensureVisible(addItemButton);
     await tester.pumpAndSettle();
     await tester.tap(addItemButton);
@@ -185,7 +185,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Scroll to and tap Add Item button
-    final addItemButton = find.text('Add Item to List');
+    final addItemButton = find.byKey(const Key('add_item_button'));
     await tester.ensureVisible(addItemButton);
     await tester.pumpAndSettle();
     await tester.tap(addItemButton);
@@ -214,7 +214,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Scroll to and tap Add Item button
-    final addItemButton = find.text('Add Item to List');
+    final addItemButton = find.byKey(const Key('add_item_button'));
     await tester.ensureVisible(addItemButton);
     await tester.pumpAndSettle();
     await tester.tap(addItemButton);
