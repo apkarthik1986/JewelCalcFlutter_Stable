@@ -218,8 +218,6 @@ void main() {
       wastageGm: 1.0,
       ratePerGram: 6000.0,
       makingCharges: 350.0,
-      mcType: 'Rupees',
-      mcPercentage: 0.0,
     );
 
     // Net weight = 10 + 1 = 11

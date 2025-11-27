@@ -16,8 +16,6 @@ class JewelItem {
   final double wastageGm;
   final double ratePerGram;
   final double makingCharges;
-  final String mcType;
-  final double mcPercentage;
 
   JewelItem({
     required this.type,
@@ -25,8 +23,6 @@ class JewelItem {
     required this.wastageGm,
     required this.ratePerGram,
     required this.makingCharges,
-    required this.mcType,
-    required this.mcPercentage,
   });
 
   double get netWeightGm => weightGm + wastageGm;
@@ -251,8 +247,6 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
         wastageGm: wastageGm,
         ratePerGram: ratePerGram,
         makingCharges: makingCharges,
-        mcType: mcType,
-        mcPercentage: mcPercentage,
       ));
       _resetCurrentItemInputs();
     });
