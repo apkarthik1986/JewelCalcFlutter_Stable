@@ -115,4 +115,118 @@ void main() {
     final wastageField = tester.widget<TextField>(find.widgetWithText(TextField, 'Wastage (gm)'));
     expect(wastageField.controller?.text, '1.000');
   });
+
+  testWidgets('Add Item button exists and is initially disabled', (WidgetTester tester) async {
+    await tester.pumpWidget(const JewelCalcApp());
+
+    // Verify that Add Item to List button exists
+    expect(find.text('Add Item to List'), findsOneWidget);
+    expect(find.byIcon(Icons.add_shopping_cart), findsOneWidget);
+
+    // Verify button is disabled when no weight is entered
+    final addItemButton = tester.widget<ElevatedButton>(
+      find.widgetWithText(ElevatedButton, 'Add Item to List'),
+    );
+    expect(addItemButton.onPressed, isNull);
+  });
+
+  testWidgets('Add Item button becomes enabled when weight is entered', (WidgetTester tester) async {
+    await tester.pumpWidget(const JewelCalcApp());
+
+    // Enter weight
+    final weightField = find.widgetWithText(TextField, 'Weight (gm)');
+    await tester.enterText(weightField, '10');
+    await tester.pumpAndSettle();
+
+    // Verify Add Item button is now enabled
+    final addItemButton = tester.widget<ElevatedButton>(
+      find.widgetWithText(ElevatedButton, 'Add Item to List'),
+    );
+    expect(addItemButton.onPressed, isNotNull);
+  });
+
+  testWidgets('Adding item shows items list section', (WidgetTester tester) async {
+    await tester.pumpWidget(const JewelCalcApp());
+
+    // Initially, Added Items section should not exist
+    expect(find.textContaining('Added Items'), findsNothing);
+
+    // Enter weight
+    final weightField = find.widgetWithText(TextField, 'Weight (gm)');
+    await tester.enterText(weightField, '10');
+    await tester.pumpAndSettle();
+
+    // Tap Add Item button
+    await tester.tap(find.text('Add Item to List'));
+    await tester.pumpAndSettle();
+
+    // Verify Added Items section now appears
+    expect(find.textContaining('Added Items'), findsOneWidget);
+
+    // Verify delete icon exists for the added item
+    expect(find.byIcon(Icons.delete), findsOneWidget);
+  });
+
+  testWidgets('Removing item hides items list when empty', (WidgetTester tester) async {
+    await tester.pumpWidget(const JewelCalcApp());
+
+    // Enter weight and add item
+    final weightField = find.widgetWithText(TextField, 'Weight (gm)');
+    await tester.enterText(weightField, '10');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Add Item to List'));
+    await tester.pumpAndSettle();
+
+    // Verify Added Items section exists
+    expect(find.textContaining('Added Items'), findsOneWidget);
+
+    // Tap delete button
+    await tester.tap(find.byIcon(Icons.delete));
+    await tester.pumpAndSettle();
+
+    // Verify Added Items section is gone
+    expect(find.textContaining('Added Items'), findsNothing);
+  });
+
+  testWidgets('Reset clears items list', (WidgetTester tester) async {
+    await tester.pumpWidget(const JewelCalcApp());
+
+    // Enter weight and add item
+    final weightField = find.widgetWithText(TextField, 'Weight (gm)');
+    await tester.enterText(weightField, '10');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Add Item to List'));
+    await tester.pumpAndSettle();
+
+    // Verify Added Items section exists
+    expect(find.textContaining('Added Items'), findsOneWidget);
+
+    // Tap reset button
+    await tester.tap(find.byIcon(Icons.refresh));
+    await tester.pumpAndSettle();
+
+    // Verify Added Items section is gone after reset
+    expect(find.textContaining('Added Items'), findsNothing);
+  });
+
+  test('JewelItem calculates correctly', () {
+    final item = JewelItem(
+      type: 'Gold 22K/916',
+      weightGm: 10.0,
+      wastageGm: 1.0,
+      ratePerGram: 6000.0,
+      makingCharges: 350.0,
+    );
+
+    // Net weight = 10 + 1 = 11
+    expect(item.netWeightGm, 11.0);
+
+    // J Amount = 11 * 6000 = 66000
+    expect(item.jAmount, 66000.0);
+
+    // Item Total = 66000 + 350 = 66350
+    expect(item.itemTotal, 66350.0);
+  });
 }
