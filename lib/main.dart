@@ -5,6 +5,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+/// GST rate constant (1.5% each for CGST and SGST)
+const double kGstRate = 0.015;
+
 void main() {
   runApp(const JewelCalcApp());
 }
@@ -28,6 +31,11 @@ class JewelItem {
   double get netWeightGm => weightGm + wastageGm;
   double get jAmount => netWeightGm * ratePerGram;
   double get itemTotal => jAmount + makingCharges;
+  // GST breakdown for display in receipt (calculated on item total before discount)
+  double get cgst => itemTotal * kGstRate;
+  double get sgst => itemTotal * kGstRate;
+  double get totalGst => cgst + sgst;
+  double get itemTotalWithGst => itemTotal + totalGst;
 }
 
 class JewelCalcApp extends StatelessWidget {
@@ -279,8 +287,11 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     }
   }
 
-  // Total of all items in the list
+  // Total of all items in the list (without GST, for calculation)
   double get itemsTotal => items.fold(0.0, (sum, item) => sum + item.itemTotal);
+
+  // Total of all items with GST included (for display)
+  double get itemsTotalWithGst => items.fold(0.0, (sum, item) => sum + item.itemTotalWithGst);
 
   // Current item total (before adding to list)
   double get currentItemTotal => jAmount + makingCharges;
@@ -299,9 +310,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   double get amountAfterDiscount => amountBeforeGst - actualDiscountAmount;
 
-  double get cgstAmount => amountAfterDiscount * 0.015;
+  double get cgstAmount => amountAfterDiscount * kGstRate;
 
-  double get sgstAmount => amountAfterDiscount * 0.015;
+  double get sgstAmount => amountAfterDiscount * kGstRate;
 
   double get finalAmount => amountAfterDiscount + cgstAmount + sgstAmount;
 
@@ -343,8 +354,22 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
+              pw.Text('CGST 1.5%:', style: const pw.TextStyle(fontSize: 14)),
+              pw.Text('Rs.${item.cgst.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('SGST 1.5%:', style: const pw.TextStyle(fontSize: 14)),
+              pw.Text('Rs.${item.sgst.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
               pw.Text('Item Total:', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-              pw.Text('Rs.${item.itemTotal.round()}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Rs.${item.itemTotalWithGst.round()}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
             ],
           ),
           pw.SizedBox(height: 8),
@@ -354,6 +379,10 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       // Add current item if any weight entered
       if (weightGm > 0) {
         final itemNum = items.length + 1;
+        final currentAmountBeforeGst = jAmount + makingCharges;
+        final currentCgst = currentAmountBeforeGst * kGstRate;
+        final currentSgst = currentAmountBeforeGst * kGstRate;
+        final currentTotalWithGst = currentAmountBeforeGst + currentCgst + currentSgst;
         widgets.addAll([
           pw.Text('Item $itemNum: $selectedType',
               style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
@@ -382,8 +411,22 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
+              pw.Text('CGST 1.5%:', style: const pw.TextStyle(fontSize: 14)),
+              pw.Text('Rs.${currentCgst.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('SGST 1.5%:', style: const pw.TextStyle(fontSize: 14)),
+              pw.Text('Rs.${currentSgst.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
               pw.Text('Item Total:', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-              pw.Text('Rs.${currentItemTotal.round()}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Rs.${currentTotalWithGst.round()}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
             ],
           ),
           pw.SizedBox(height: 8),
@@ -550,11 +593,11 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             const SizedBox(height: 16),
             _buildCustomerInfoSection(),
             const SizedBox(height: 16),
-            _buildItemsListSection(),
-            const SizedBox(height: 16),
             _buildItemCalculationSection(),
             const SizedBox(height: 16),
             _buildAmountCalculationSection(),
+            const SizedBox(height: 16),
+            _buildItemsListSection(),
             const SizedBox(height: 16),
             _buildDiscountSection(),
             const SizedBox(height: 16),
@@ -598,7 +641,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 Text(
-                  'Total: ₹${itemsTotal.round()}',
+                  'Total: ₹${itemsTotalWithGst.round()}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.green,
@@ -616,20 +659,35 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   color: Colors.grey.shade100,
-                  child: ListTile(
-                    title: Text(
-                      '${index + 1}. ${item.type}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      'Weight: ${item.weightGm.toStringAsFixed(3)}gm | Net: ${item.netWeightGm.toStringAsFixed(3)}gm\n'
-                      'Amount: ₹${item.itemTotal.round()}',
-                    ),
-                    isThreeLine: true,
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _removeItem(index),
-                      tooltip: 'Remove Item',
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${index + 1}. ${item.type}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _removeItem(index),
+                              tooltip: 'Remove Item',
+                            ),
+                          ],
+                        ),
+                        Text('Weight: ${item.weightGm.toStringAsFixed(3)}gm | Net: ${item.netWeightGm.toStringAsFixed(3)}gm'),
+                        Text('Wastage: ${item.wastageGm.toStringAsFixed(3)}gm'),
+                        Text('Making Charges: ₹${item.makingCharges.toStringAsFixed(2)}'),
+                        Text('CGST 1.5%: ₹${item.cgst.toStringAsFixed(2)} | SGST 1.5%: ₹${item.sgst.toStringAsFixed(2)}'),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Item Total: ₹${item.itemTotalWithGst.round()}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                        ),
+                      ],
                     ),
                   ),
                 );
