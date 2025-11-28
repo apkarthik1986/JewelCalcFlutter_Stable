@@ -246,7 +246,19 @@ void main() {
     // J Amount = 11 * 6000 = 66000
     expect(item.jAmount, 66000.0);
 
-    // Item Total = 66000 + 350 = 66350
+    // Item Total (before GST) = 66000 + 350 = 66350
     expect(item.itemTotal, 66350.0);
+
+    // CGST = 66350 * 0.015 = 995.25
+    expect(item.cgst, 995.25);
+
+    // SGST = 66350 * 0.015 = 995.25
+    expect(item.sgst, 995.25);
+
+    // Total GST = 995.25 + 995.25 = 1990.50
+    expect(item.totalGst, 1990.50);
+
+    // Item Total with GST = 66350 + 1990.50 = 68340.50
+    expect(item.itemTotalWithGst, 68340.50);
   });
 }
