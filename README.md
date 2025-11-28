@@ -1,4 +1,4 @@
-# MyFlutter - Jewel Calc
+# Jewel Calc
 
 A Flutter Android application for jewellery invoicing that can be built using GitHub Codespaces and GitHub Actions.
 

@@ -5,8 +5,37 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+/// GST rate constant (1.5% each for CGST and SGST)
+const double kGstRate = 0.015;
+
 void main() {
   runApp(const JewelCalcApp());
+}
+
+/// Represents a single jewellery item with all its calculation details
+class JewelItem {
+  final String type;
+  final double weightGm;
+  final double wastageGm;
+  final double ratePerGram;
+  final double makingCharges;
+
+  JewelItem({
+    required this.type,
+    required this.weightGm,
+    required this.wastageGm,
+    required this.ratePerGram,
+    required this.makingCharges,
+  });
+
+  double get netWeightGm => weightGm + wastageGm;
+  double get jAmount => netWeightGm * ratePerGram;
+  double get itemTotal => jAmount + makingCharges;
+  // GST breakdown for display in receipt (calculated on item total before discount)
+  double get cgst => itemTotal * kGstRate;
+  double get sgst => itemTotal * kGstRate;
+  double get totalGst => cgst + sgst;
+  double get itemTotalWithGst => itemTotal + totalGst;
 }
 
 class JewelCalcApp extends StatelessWidget {
@@ -72,6 +101,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   String discountType = 'None';
   double discountAmount = 0.0;
   double discountPercentage = 0.0;
+
+  // List to store multiple items
+  List<JewelItem> items = [];
 
   @override
   void initState() {
@@ -197,6 +229,40 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       discountAmount = 0.0;
       discountPercentage = 0.0;
       discountType = 'None';
+      items.clear();
+    });
+  }
+
+  void _resetCurrentItemInputs() {
+    setState(() {
+      weightController.clear();
+      wastageController.clear();
+      makingChargesController.clear();
+      weightGm = 0.0;
+      wastageGm = 0.0;
+      makingCharges = 0.0;
+      mcPercentage = 0.0;
+    });
+  }
+
+  void _addCurrentItem() {
+    if (weightGm <= 0) return;
+    
+    setState(() {
+      items.add(JewelItem(
+        type: selectedType,
+        weightGm: weightGm,
+        wastageGm: wastageGm,
+        ratePerGram: ratePerGram,
+        makingCharges: makingCharges,
+      ));
+      _resetCurrentItemInputs();
+    });
+  }
+
+  void _removeItem(int index) {
+    setState(() {
+      items.removeAt(index);
     });
   }
 
@@ -221,7 +287,17 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     }
   }
 
-  double get amountBeforeGst => jAmount + makingCharges;
+  // Total of all items in the list (without GST, for calculation)
+  double get itemsTotal => items.fold(0.0, (sum, item) => sum + item.itemTotal);
+
+  // Total of all items with GST included (for display)
+  double get itemsTotalWithGst => items.fold(0.0, (sum, item) => sum + item.itemTotalWithGst);
+
+  // Current item total (before adding to list)
+  double get currentItemTotal => jAmount + makingCharges;
+
+  // Grand total: all items + current item (if any weight entered)
+  double get amountBeforeGst => itemsTotal + (weightGm > 0 ? currentItemTotal : 0);
 
   double get actualDiscountAmount {
     if (discountType == 'Rupees') {
@@ -234,14 +310,131 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   double get amountAfterDiscount => amountBeforeGst - actualDiscountAmount;
 
-  double get cgstAmount => amountAfterDiscount * 0.015;
+  double get cgstAmount => amountAfterDiscount * kGstRate;
 
-  double get sgstAmount => amountAfterDiscount * 0.015;
+  double get sgstAmount => amountAfterDiscount * kGstRate;
 
   double get finalAmount => amountAfterDiscount + cgstAmount + sgstAmount;
 
   Future<void> _generatePdf() async {
     final pdf = pw.Document();
+    
+    // Build list of item widgets for PDF
+    List<pw.Widget> _buildItemWidgets() {
+      List<pw.Widget> widgets = [];
+      
+      // Add saved items
+      for (int i = 0; i < items.length; i++) {
+        final item = items[i];
+        widgets.addAll([
+          pw.Text('Item ${i + 1}: ${item.type}',
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.Text('Rate: Rs.${item.ratePerGram}/gm',
+              style: const pw.TextStyle(fontSize: 14)),
+          pw.Text('Weight: ${item.weightGm.toStringAsFixed(3)} gm',
+              style: const pw.TextStyle(fontSize: 14)),
+          pw.Text('Wastage: ${item.wastageGm.toStringAsFixed(3)} gm',
+              style: const pw.TextStyle(fontSize: 14)),
+          pw.Text('Net Weight: ${item.netWeightGm.toStringAsFixed(3)} gm',
+              style: const pw.TextStyle(fontSize: 14)),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('J Amount:', style: const pw.TextStyle(fontSize: 14)),
+              pw.Text('Rs.${item.jAmount.round()}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('Making Charges:', style: const pw.TextStyle(fontSize: 14)),
+              pw.Text('Rs.${item.makingCharges.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('CGST 1.5%:', style: const pw.TextStyle(fontSize: 14)),
+              pw.Text('Rs.${item.cgst.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('SGST 1.5%:', style: const pw.TextStyle(fontSize: 14)),
+              pw.Text('Rs.${item.sgst.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('Item Total:', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Rs.${item.itemTotalWithGst.round()}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+        ]);
+      }
+      
+      // Add current item if any weight entered
+      if (weightGm > 0) {
+        final itemNum = items.length + 1;
+        final currentAmountBeforeGst = jAmount + makingCharges;
+        final currentCgst = currentAmountBeforeGst * kGstRate;
+        final currentSgst = currentAmountBeforeGst * kGstRate;
+        final currentTotalWithGst = currentAmountBeforeGst + currentCgst + currentSgst;
+        widgets.addAll([
+          pw.Text('Item $itemNum: $selectedType',
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.Text('Rate: Rs.$ratePerGram/gm',
+              style: const pw.TextStyle(fontSize: 14)),
+          pw.Text('Weight: ${weightGm.toStringAsFixed(3)} gm',
+              style: const pw.TextStyle(fontSize: 14)),
+          pw.Text('Wastage: ${wastageGm.toStringAsFixed(3)} gm',
+              style: const pw.TextStyle(fontSize: 14)),
+          pw.Text('Net Weight: ${netWeightGm.toStringAsFixed(3)} gm',
+              style: const pw.TextStyle(fontSize: 14)),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('J Amount:', style: const pw.TextStyle(fontSize: 14)),
+              pw.Text('Rs.${jAmount.round()}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('Making Charges:', style: const pw.TextStyle(fontSize: 14)),
+              pw.Text('Rs.${makingCharges.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('CGST 1.5%:', style: const pw.TextStyle(fontSize: 14)),
+              pw.Text('Rs.${currentCgst.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('SGST 1.5%:', style: const pw.TextStyle(fontSize: 14)),
+              pw.Text('Rs.${currentSgst.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('Item Total:', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Rs.${currentTotalWithGst.round()}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+        ]);
+      }
+      
+      return widgets;
+    }
 
     pdf.addPage(
       pw.Page(
@@ -280,46 +473,19 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   pw.Text('Mobile: ${mobileNumberController.text}',
                       style: const pw.TextStyle(fontSize: 16)),
                 pw.Divider(),
-                pw.Text('ITEM DETAILS',
+                pw.Text('ITEM DETAILS (${items.length + (weightGm > 0 ? 1 : 0)} items)',
                     style: pw.TextStyle(
                         fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                pw.Text('Type: $selectedType',
-                    style: const pw.TextStyle(fontSize: 16)),
-                pw.Text('Rate: Rs.$ratePerGram/gm',
-                    style: const pw.TextStyle(fontSize: 16)),
-                pw.Text('Weight: ${weightGm.toStringAsFixed(3)} gm',
-                    style: const pw.TextStyle(fontSize: 16)),
-                pw.Text('Wastage: ${wastageGm.toStringAsFixed(3)} gm',
-                    style: const pw.TextStyle(fontSize: 16)),
-                pw.Text('Net Weight: ${netWeightGm.toStringAsFixed(3)} gm',
-                    style: pw.TextStyle(
-                        fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 8),
+                ..._buildItemWidgets(),
                 pw.Divider(),
-                pw.Text('AMOUNT CALCULATION',
+                pw.Text('AMOUNT SUMMARY',
                     style: pw.TextStyle(
                         fontSize: 16, fontWeight: pw.FontWeight.bold)),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('J Amount:',
-                        style: const pw.TextStyle(fontSize: 16)),
-                    pw.Text('Rs.${jAmount.round()}',
-                        style: const pw.TextStyle(fontSize: 16)),
-                  ],
-                ),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('Making Charges:',
-                        style: const pw.TextStyle(fontSize: 16)),
-                    pw.Text('Rs.${makingCharges.toStringAsFixed(2)}',
-                        style: const pw.TextStyle(fontSize: 16)),
-                  ],
-                ),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('Amount:',
+                    pw.Text('Subtotal:',
                         style: pw.TextStyle(
                             fontSize: 16, fontWeight: pw.FontWeight.bold)),
                     pw.Text('Rs.${amountBeforeGst.round()}',
@@ -431,6 +597,8 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             const SizedBox(height: 16),
             _buildAmountCalculationSection(),
             const SizedBox(height: 16),
+            _buildItemsListSection(),
+            const SizedBox(height: 16),
             _buildDiscountSection(),
             const SizedBox(height: 16),
             _buildGstSection(),
@@ -447,6 +615,83 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   padding: const EdgeInsets.all(16),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemsListSection() {
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Added Items (${items.length})',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                Text(
+                  'Total: ₹${itemsTotalWithGst.round()}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final item = items[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  color: Colors.grey.shade100,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${index + 1}. ${item.type}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _removeItem(index),
+                              tooltip: 'Remove Item',
+                            ),
+                          ],
+                        ),
+                        Text('Weight: ${item.weightGm.toStringAsFixed(3)}gm | Net: ${item.netWeightGm.toStringAsFixed(3)}gm'),
+                        Text('Wastage: ${item.wastageGm.toStringAsFixed(3)}gm'),
+                        Text('Making Charges: ₹${item.makingCharges.toStringAsFixed(2)}'),
+                        Text('CGST 1.5%: ₹${item.cgst.toStringAsFixed(2)} | SGST 1.5%: ₹${item.sgst.toStringAsFixed(2)}'),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Item Total: ₹${item.itemTotalWithGst.round()}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -732,13 +977,50 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Amount:',
+                const Text('Current Item:',
                     style: TextStyle(fontWeight: FontWeight.bold)),
-                Text('₹${amountBeforeGst.round()}',
+                Text('₹${currentItemTotal.round()}',
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                key: const Key('add_item_button'),
+                onPressed: weightGm > 0 ? _addCurrentItem : null,
+                icon: const Icon(Icons.add_shopping_cart),
+                label: const Text('Add Item to List'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.all(12),
+                ),
+              ),
+            ),
+            if (items.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('All Items Total (${items.length} items):',
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text('₹${itemsTotal.round()}',
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.purple)),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -862,20 +1144,33 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   }
 
   Widget _buildFinalAmountSection() {
+    final totalItemsCount = items.length + (weightGm > 0 ? 1 : 0);
     return Card(
       color: Colors.green.shade50,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
           children: [
-            const Text('💰 Amount Incl. GST:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            Text('₹${finalAmount.round()}',
-                style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green)),
+            if (totalItemsCount > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  '📦 Total Items: $totalItemsCount',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('💰 Amount Incl. GST:',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('₹${finalAmount.round()}',
+                    style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green)),
+              ],
+            ),
           ],
         ),
       ),
