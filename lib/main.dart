@@ -5,6 +5,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+/// GST rate constant (1.5% each for CGST and SGST)
+const double kGstRate = 0.015;
+
 void main() {
   runApp(const JewelCalcApp());
 }
@@ -29,8 +32,8 @@ class JewelItem {
   double get jAmount => netWeightGm * ratePerGram;
   double get itemTotal => jAmount + makingCharges;
   // GST breakdown for display in receipt (calculated on item total before discount)
-  double get cgst => itemTotal * 0.015;
-  double get sgst => itemTotal * 0.015;
+  double get cgst => itemTotal * kGstRate;
+  double get sgst => itemTotal * kGstRate;
   double get totalGst => cgst + sgst;
   double get itemTotalWithGst => itemTotal + totalGst;
 }
@@ -307,9 +310,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   double get amountAfterDiscount => amountBeforeGst - actualDiscountAmount;
 
-  double get cgstAmount => amountAfterDiscount * 0.015;
+  double get cgstAmount => amountAfterDiscount * kGstRate;
 
-  double get sgstAmount => amountAfterDiscount * 0.015;
+  double get sgstAmount => amountAfterDiscount * kGstRate;
 
   double get finalAmount => amountAfterDiscount + cgstAmount + sgstAmount;
 
@@ -377,8 +380,8 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       if (weightGm > 0) {
         final itemNum = items.length + 1;
         final currentAmountBeforeGst = jAmount + makingCharges;
-        final currentCgst = currentAmountBeforeGst * 0.015;
-        final currentSgst = currentAmountBeforeGst * 0.015;
+        final currentCgst = currentAmountBeforeGst * kGstRate;
+        final currentSgst = currentAmountBeforeGst * kGstRate;
         final currentTotalWithGst = currentAmountBeforeGst + currentCgst + currentSgst;
         widgets.addAll([
           pw.Text('Item $itemNum: $selectedType',
@@ -678,7 +681,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         Text('Weight: ${item.weightGm.toStringAsFixed(3)}gm | Net: ${item.netWeightGm.toStringAsFixed(3)}gm'),
                         Text('Wastage: ${item.wastageGm.toStringAsFixed(3)}gm'),
                         Text('Making Charges: ₹${item.makingCharges.toStringAsFixed(2)}'),
-                        Text('GST (3%): ₹${item.totalGst.toStringAsFixed(2)}'),
+                        Text('CGST 1.5%: ₹${item.cgst.toStringAsFixed(2)} | SGST 1.5%: ₹${item.sgst.toStringAsFixed(2)}'),
                         const SizedBox(height: 4),
                         Text(
                           'Item Total: ₹${item.itemTotalWithGst.round()}',
