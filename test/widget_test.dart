@@ -270,8 +270,8 @@ void main() {
   testWidgets('Old Gold Exchange section exists', (WidgetTester tester) async {
     await tester.pumpWidget(const JewelCalcApp());
 
-    // Scroll to find the Old Gold Exchange section using drag
-    await tester.drag(find.byType(SingleChildScrollView), kScrollToOldGoldOffset);
+    // Scroll to find the Old Gold Exchange section using drag (use .first for explicit targeting)
+    await tester.drag(find.byType(SingleChildScrollView).first, kScrollToOldGoldOffset);
     await tester.pumpAndSettle();
 
     // Verify that Old Gold Exchange section exists
@@ -296,8 +296,8 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    // Scroll to find the Old Gold Exchange section
-    await tester.drag(find.byType(SingleChildScrollView), kScrollToOldGoldOffset);
+    // Scroll to find the Old Gold Exchange section (use .first to target the main page's SingleChildScrollView)
+    await tester.drag(find.byType(SingleChildScrollView).first, kScrollToOldGoldOffset);
     await tester.pumpAndSettle();
 
     // Enter old gold weight (use .last since there are two Weight fields)
@@ -313,8 +313,8 @@ void main() {
   testWidgets('Reset clears old gold input', (WidgetTester tester) async {
     await tester.pumpWidget(const JewelCalcApp());
 
-    // Scroll to find the Old Gold Exchange section
-    await tester.drag(find.byType(SingleChildScrollView), kScrollToOldGoldOffset);
+    // Scroll to find the Old Gold Exchange section (use .first for explicit targeting)
+    await tester.drag(find.byType(SingleChildScrollView).first, kScrollToOldGoldOffset);
     await tester.pumpAndSettle();
 
     // Enter old gold weight (use .last since there are two Weight fields)
