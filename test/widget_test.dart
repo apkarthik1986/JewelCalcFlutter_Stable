@@ -3,6 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:myflutter/main.dart';
 
+/// Scroll offset used to navigate to the Old Gold Exchange section.
+/// This value is calibrated to scroll past the Item Calculation and
+/// Amount Calculation sections to reach the Old Gold Exchange section.
+const Offset kScrollToOldGoldOffset = Offset(0, -500);
+
 void main() {
   testWidgets('Jewel Calc app smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const JewelCalcApp());
@@ -52,8 +57,8 @@ void main() {
   testWidgets('Reset button clears all inputs', (WidgetTester tester) async {
     await tester.pumpWidget(const JewelCalcApp());
 
-    // Find and enter text in the weight field
-    final weightField = find.widgetWithText(TextField, 'Weight (gm)');
+    // Find and enter text in the weight field (use .first since there are two Weight fields)
+    final weightField = find.widgetWithText(TextField, 'Weight (gm)').first;
     await tester.tap(weightField);
     await tester.enterText(weightField, '10');
     await tester.pumpAndSettle();
@@ -106,8 +111,8 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    // Enter weight
-    final weightField = find.widgetWithText(TextField, 'Weight (gm)');
+    // Enter weight (use .first since there are two Weight fields)
+    final weightField = find.widgetWithText(TextField, 'Weight (gm)').first;
     await tester.enterText(weightField, '10');
     await tester.pumpAndSettle();
 
@@ -136,8 +141,8 @@ void main() {
   testWidgets('Add Item button becomes enabled when weight is entered', (WidgetTester tester) async {
     await tester.pumpWidget(const JewelCalcApp());
 
-    // Enter weight
-    final weightField = find.widgetWithText(TextField, 'Weight (gm)');
+    // Enter weight (use .first since there are two Weight fields)
+    final weightField = find.widgetWithText(TextField, 'Weight (gm)').first;
     await tester.enterText(weightField, '10');
     await tester.pumpAndSettle();
 
@@ -157,8 +162,8 @@ void main() {
     // Initially, Added Items section should not exist
     expect(find.textContaining('Added Items'), findsNothing);
 
-    // Enter weight
-    final weightField = find.widgetWithText(TextField, 'Weight (gm)');
+    // Enter weight (use .first since there are two Weight fields)
+    final weightField = find.widgetWithText(TextField, 'Weight (gm)').first;
     await tester.enterText(weightField, '10');
     await tester.pumpAndSettle();
 
@@ -179,8 +184,8 @@ void main() {
   testWidgets('Removing item hides items list when empty', (WidgetTester tester) async {
     await tester.pumpWidget(const JewelCalcApp());
 
-    // Enter weight and add item
-    final weightField = find.widgetWithText(TextField, 'Weight (gm)');
+    // Enter weight and add item (use .first since there are two Weight fields)
+    final weightField = find.widgetWithText(TextField, 'Weight (gm)').first;
     await tester.enterText(weightField, '10');
     await tester.pumpAndSettle();
 
@@ -208,8 +213,8 @@ void main() {
   testWidgets('Reset clears items list', (WidgetTester tester) async {
     await tester.pumpWidget(const JewelCalcApp());
 
-    // Enter weight and add item
-    final weightField = find.widgetWithText(TextField, 'Weight (gm)');
+    // Enter weight and add item (use .first since there are two Weight fields)
+    final weightField = find.widgetWithText(TextField, 'Weight (gm)').first;
     await tester.enterText(weightField, '10');
     await tester.pumpAndSettle();
 
@@ -265,13 +270,12 @@ void main() {
   testWidgets('Old Gold Exchange section exists', (WidgetTester tester) async {
     await tester.pumpWidget(const JewelCalcApp());
 
-    // Scroll to find the Old Gold Exchange section
-    final oldGoldSection = find.text('Old Gold Exchange');
-    await tester.scrollUntilVisible(oldGoldSection, 100);
+    // Scroll to find the Old Gold Exchange section using drag
+    await tester.drag(find.byType(SingleChildScrollView), kScrollToOldGoldOffset);
     await tester.pumpAndSettle();
 
     // Verify that Old Gold Exchange section exists
-    expect(oldGoldSection, findsOneWidget);
+    expect(find.text('Old Gold Exchange'), findsOneWidget);
     expect(find.text('Enter old gold details to deduct from total'), findsOneWidget);
     expect(find.text('Old Gold Type'), findsOneWidget);
   });
@@ -293,11 +297,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // Scroll to find the Old Gold Exchange section
-    final oldGoldWeightField = find.widgetWithText(TextField, 'Weight (gm)').last;
-    await tester.scrollUntilVisible(oldGoldWeightField, 100);
+    await tester.drag(find.byType(SingleChildScrollView), kScrollToOldGoldOffset);
     await tester.pumpAndSettle();
 
-    // Enter old gold weight
+    // Enter old gold weight (use .last since there are two Weight fields)
+    final oldGoldWeightField = find.widgetWithText(TextField, 'Weight (gm)').last;
     await tester.enterText(oldGoldWeightField, '5');
     await tester.pumpAndSettle();
 
@@ -310,11 +314,11 @@ void main() {
     await tester.pumpWidget(const JewelCalcApp());
 
     // Scroll to find the Old Gold Exchange section
-    final oldGoldWeightField = find.widgetWithText(TextField, 'Weight (gm)').last;
-    await tester.scrollUntilVisible(oldGoldWeightField, 100);
+    await tester.drag(find.byType(SingleChildScrollView), kScrollToOldGoldOffset);
     await tester.pumpAndSettle();
 
-    // Enter old gold weight
+    // Enter old gold weight (use .last since there are two Weight fields)
+    final oldGoldWeightField = find.widgetWithText(TextField, 'Weight (gm)').last;
     await tester.enterText(oldGoldWeightField, '5');
     await tester.pumpAndSettle();
 
