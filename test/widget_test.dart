@@ -3,6 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:myflutter/main.dart';
 
+/// Scroll offset used to navigate to the Old Gold Exchange section.
+/// This value is calibrated to scroll past the Item Calculation and
+/// Amount Calculation sections to reach the Old Gold Exchange section.
+const Offset kScrollToOldGoldOffset = Offset(0, -500);
+
 void main() {
   testWidgets('Jewel Calc app smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const JewelCalcApp());
@@ -266,7 +271,7 @@ void main() {
     await tester.pumpWidget(const JewelCalcApp());
 
     // Scroll to find the Old Gold Exchange section using drag
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
+    await tester.drag(find.byType(SingleChildScrollView), kScrollToOldGoldOffset);
     await tester.pumpAndSettle();
 
     // Verify that Old Gold Exchange section exists
@@ -292,7 +297,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Scroll to find the Old Gold Exchange section
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
+    await tester.drag(find.byType(SingleChildScrollView), kScrollToOldGoldOffset);
     await tester.pumpAndSettle();
 
     // Enter old gold weight (use .last since there are two Weight fields)
@@ -309,7 +314,7 @@ void main() {
     await tester.pumpWidget(const JewelCalcApp());
 
     // Scroll to find the Old Gold Exchange section
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -500));
+    await tester.drag(find.byType(SingleChildScrollView), kScrollToOldGoldOffset);
     await tester.pumpAndSettle();
 
     // Enter old gold weight (use .last since there are two Weight fields)
