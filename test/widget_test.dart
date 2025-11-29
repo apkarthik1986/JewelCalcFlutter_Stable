@@ -261,4 +261,69 @@ void main() {
     // Item Total with GST = 66350 + 1990.50 = 68340.50
     expect(item.itemTotalWithGst, 68340.50);
   });
+
+  testWidgets('Old Gold Exchange section exists', (WidgetTester tester) async {
+    await tester.pumpWidget(const JewelCalcApp());
+
+    // Scroll to find the Old Gold Exchange section
+    final oldGoldSection = find.text('Old Gold Exchange');
+    await tester.scrollUntilVisible(oldGoldSection, 100);
+    await tester.pumpAndSettle();
+
+    // Verify that Old Gold Exchange section exists
+    expect(oldGoldSection, findsOneWidget);
+    expect(find.text('Enter old gold details to deduct from total'), findsOneWidget);
+    expect(find.text('Old Gold Type'), findsOneWidget);
+  });
+
+  testWidgets('Old Gold Exchange shows value when weight is entered', (WidgetTester tester) async {
+    await tester.pumpWidget(const JewelCalcApp());
+
+    // First, set a gold rate in settings
+    await tester.tap(find.byIcon(Icons.settings));
+    await tester.pumpAndSettle();
+
+    // Set Gold 22K rate to 6000
+    final gold22kRateField = find.widgetWithText(TextField, 'Gold 22K/916 Rate');
+    await tester.enterText(gold22kRateField, '6000');
+    await tester.pumpAndSettle();
+
+    // Save settings
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    // Scroll to find the Old Gold Exchange section
+    final oldGoldWeightField = find.widgetWithText(TextField, 'Weight (gm)').last;
+    await tester.scrollUntilVisible(oldGoldWeightField, 100);
+    await tester.pumpAndSettle();
+
+    // Enter old gold weight
+    await tester.enterText(oldGoldWeightField, '5');
+    await tester.pumpAndSettle();
+
+    // Verify that old gold value is displayed (5 gm * 6000 = 30000)
+    expect(find.text('Old Gold Rate:'), findsOneWidget);
+    expect(find.text('Old Gold Value:'), findsOneWidget);
+  });
+
+  testWidgets('Reset clears old gold input', (WidgetTester tester) async {
+    await tester.pumpWidget(const JewelCalcApp());
+
+    // Scroll to find the Old Gold Exchange section
+    final oldGoldWeightField = find.widgetWithText(TextField, 'Weight (gm)').last;
+    await tester.scrollUntilVisible(oldGoldWeightField, 100);
+    await tester.pumpAndSettle();
+
+    // Enter old gold weight
+    await tester.enterText(oldGoldWeightField, '5');
+    await tester.pumpAndSettle();
+
+    // Tap reset button
+    await tester.tap(find.byIcon(Icons.refresh));
+    await tester.pumpAndSettle();
+
+    // Verify old gold weight field is cleared
+    final weightTextField = tester.widget<TextField>(oldGoldWeightField);
+    expect(weightTextField.controller?.text, isEmpty);
+  });
 }

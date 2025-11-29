@@ -102,6 +102,11 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   double discountAmount = 0.0;
   double discountPercentage = 0.0;
 
+  // Old Gold exchange fields
+  final TextEditingController oldGoldWeightController = TextEditingController();
+  String oldGoldType = 'Gold 22K/916';
+  double oldGoldWeight = 0.0;
+
   // List to store multiple items
   List<JewelItem> items = [];
 
@@ -222,6 +227,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       weightController.clear();
       wastageController.clear();
       makingChargesController.clear();
+      oldGoldWeightController.clear();
       weightGm = 0.0;
       wastageGm = 0.0;
       makingCharges = 0.0;
@@ -229,6 +235,8 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       discountAmount = 0.0;
       discountPercentage = 0.0;
       discountType = 'None';
+      oldGoldWeight = 0.0;
+      oldGoldType = 'Gold 22K/916';
       items.clear();
     });
   }
@@ -310,11 +318,15 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   double get amountAfterDiscount => amountBeforeGst - actualDiscountAmount;
 
+  // Old gold value calculation (weight * rate of selected old gold type)
+  double get oldGoldRate => metalRates[oldGoldType] ?? 0.0;
+  double get oldGoldValue => oldGoldWeight * oldGoldRate;
+
   double get cgstAmount => amountAfterDiscount * kGstRate;
 
   double get sgstAmount => amountAfterDiscount * kGstRate;
 
-  double get finalAmount => amountAfterDiscount + cgstAmount + sgstAmount;
+  double get finalAmount => amountAfterDiscount + cgstAmount + sgstAmount - oldGoldValue;
 
   Future<void> _generatePdf() async {
     final pdf = pw.Document();
@@ -533,11 +545,53 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         style: const pw.TextStyle(fontSize: 16)),
                   ],
                 ),
+                if (oldGoldValue > 0) ...[
+                  pw.Divider(),
+                  pw.Text('OLD GOLD EXCHANGE',
+                      style: pw.TextStyle(
+                          fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Type:',
+                          style: const pw.TextStyle(fontSize: 14)),
+                      pw.Text(oldGoldType,
+                          style: const pw.TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Weight:',
+                          style: const pw.TextStyle(fontSize: 14)),
+                      pw.Text('${oldGoldWeight.toStringAsFixed(3)} gm',
+                          style: const pw.TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Rate:',
+                          style: const pw.TextStyle(fontSize: 14)),
+                      pw.Text('Rs.${oldGoldRate.toStringAsFixed(2)}/gm',
+                          style: const pw.TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Old Gold Value:',
+                          style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('- Rs.${oldGoldValue.round()}',
+                          style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                    ],
+                  ),
+                ],
                 pw.Divider(),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('T.Amount:',
+                    pw.Text(oldGoldValue > 0 ? 'Net Payable:' : 'T.Amount:',
                         style: pw.TextStyle(
                             fontSize: 20, fontWeight: pw.FontWeight.bold)),
                     pw.Text('Rs.${finalAmount.round()}',
@@ -602,6 +656,8 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             _buildDiscountSection(),
             const SizedBox(height: 16),
             _buildGstSection(),
+            const SizedBox(height: 16),
+            _buildOldGoldSection(),
             const SizedBox(height: 16),
             _buildFinalAmountSection(),
             const SizedBox(height: 16),
@@ -1143,8 +1199,107 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     );
   }
 
+  Widget _buildOldGoldSection() {
+    // Only show gold types for old gold exchange
+    final goldTypes = metalRates.keys.where((type) => type.contains('Gold')).toList();
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Old Gold Exchange',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Enter old gold details to deduct from total',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: DropdownButtonFormField<String>(
+                    value: oldGoldType,
+                    decoration: const InputDecoration(
+                      labelText: 'Old Gold Type',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: goldTypes.map((String type) {
+                      return DropdownMenuItem(value: type, child: Text(type));
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        oldGoldType = value!;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 1,
+                  child: TextField(
+                    controller: oldGoldWeightController,
+                    decoration: const InputDecoration(
+                      labelText: 'Weight (gm)',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      setState(() {
+                        oldGoldWeight = double.tryParse(value) ?? 0.0;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+            if (oldGoldWeight > 0) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Old Gold Rate:'),
+                        Text('₹${oldGoldRate.toStringAsFixed(2)}/gm'),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Old Gold Value:',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('- ₹${oldGoldValue.round()}',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFinalAmountSection() {
     final totalItemsCount = items.length + (weightGm > 0 ? 1 : 0);
+    final amountWithGst = amountAfterDiscount + cgstAmount + sgstAmount;
     return Card(
       color: Colors.green.shade50,
       child: Padding(
@@ -1159,11 +1314,33 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   style: const TextStyle(fontSize: 14),
                 ),
               ),
+            if (oldGoldValue > 0) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Amount with GST:',
+                      style: TextStyle(fontSize: 14)),
+                  Text('₹${amountWithGst.round()}',
+                      style: const TextStyle(fontSize: 14)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Old Gold (${oldGoldWeight.toStringAsFixed(3)}gm):',
+                      style: const TextStyle(fontSize: 14, color: Colors.orange)),
+                  Text('- ₹${oldGoldValue.round()}',
+                      style: const TextStyle(fontSize: 14, color: Colors.orange)),
+                ],
+              ),
+              const Divider(),
+            ],
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('💰 Amount Incl. GST:',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(oldGoldValue > 0 ? '💰 Net Payable:' : '💰 Amount Incl. GST:',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 Text('₹${finalAmount.round()}',
                     style: const TextStyle(
                         fontSize: 24,
@@ -1312,6 +1489,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     weightController.dispose();
     wastageController.dispose();
     makingChargesController.dispose();
+    oldGoldWeightController.dispose();
     for (var controller in metalRateControllers.values) {
       controller.dispose();
     }
