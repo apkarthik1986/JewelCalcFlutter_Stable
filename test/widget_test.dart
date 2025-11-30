@@ -366,16 +366,16 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    // Scroll to find the Exchange section
-    await tester.drag(find.byType(SingleChildScrollView).first, kScrollToExchangeOffset);
+    // Find the exchange weight field and ensure it's visible
+    final exchangeWeightField = find.widgetWithText(TextField, 'Weight (gm)').last;
+    await tester.ensureVisible(exchangeWeightField);
     await tester.pumpAndSettle();
 
     // Enter exchange weight
-    final exchangeWeightField = find.widgetWithText(TextField, 'Weight (gm)').last;
     await tester.enterText(exchangeWeightField, '5');
     await tester.pumpAndSettle();
 
-    // Add exchange item
+    // Ensure the add button is visible and tap it
     final addExchangeButton = find.byKey(const Key('add_exchange_item_button'));
     await tester.ensureVisible(addExchangeButton);
     await tester.pumpAndSettle();
