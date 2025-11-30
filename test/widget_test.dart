@@ -365,6 +365,10 @@ void main() {
     // Save settings
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
+    
+    // Wait for snackbar timer to complete (snackbar has 2 second duration)
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
 
     // Scroll to the Exchange section to ensure it's fully visible
     await tester.drag(find.byType(SingleChildScrollView).first, kScrollToExchangeOffset, warnIfMissed: false);
