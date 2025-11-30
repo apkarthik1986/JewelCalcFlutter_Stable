@@ -615,15 +615,10 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.SizedBox(height: 4),
-                      pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                        children: [
-                          pw.Text('${item.type}:',
-                              style: const pw.TextStyle(fontSize: 14)),
-                          pw.Text('${item.weightGm.toStringAsFixed(3)} gm @ Rs.${item.ratePerGram.toStringAsFixed(2)}/gm',
-                              style: const pw.TextStyle(fontSize: 14)),
-                        ],
-                      ),
+                      pw.Text('${item.type}',
+                          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                      pw.Text('${item.weightGm.toStringAsFixed(3)} gm @ Rs.${item.ratePerGram.toStringAsFixed(2)}/gm',
+                          style: const pw.TextStyle(fontSize: 12)),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
@@ -638,15 +633,10 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   // Add current exchange item if any weight entered
                   if (exchangeWeight > 0) ...[
                     pw.SizedBox(height: 4),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('$exchangeType:',
-                            style: const pw.TextStyle(fontSize: 14)),
-                        pw.Text('${exchangeWeight.toStringAsFixed(3)} gm @ Rs.${exchangeRate.toStringAsFixed(2)}/gm',
-                            style: const pw.TextStyle(fontSize: 14)),
-                      ],
-                    ),
+                    pw.Text('$exchangeType',
+                        style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('${exchangeWeight.toStringAsFixed(3)} gm @ Rs.${exchangeRate.toStringAsFixed(2)}/gm',
+                        style: const pw.TextStyle(fontSize: 12)),
                     pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
@@ -661,7 +651,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('Total Exchange Value:',
+                      pw.Text('Total Exchange:',
                           style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
                       pw.Text('- Rs.${totalExchangeValue.round()}',
                           style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
