@@ -48,7 +48,8 @@ class ExchangeItem {
     required this.type,
     required this.weightGm,
     required this.ratePerGram,
-  });
+  }) : assert(weightGm >= 0, 'weightGm must be non-negative'),
+       assert(ratePerGram >= 0, 'ratePerGram must be non-negative');
 
   double get value => weightGm * ratePerGram;
 }
@@ -303,11 +304,14 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   void _addCurrentExchangeItem() {
     if (exchangeWeight <= 0) return;
     
+    final rate = metalRates[exchangeType] ?? 0.0;
+    if (rate <= 0) return; // Don't add if rate is zero or not set
+    
     setState(() {
       exchangeItems.add(ExchangeItem(
         type: exchangeType,
         weightGm: exchangeWeight,
-        ratePerGram: metalRates[exchangeType] ?? 0.0,
+        ratePerGram: rate,
       ));
       _resetCurrentExchangeInputs();
     });
@@ -374,6 +378,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   
   // Total exchange value: all exchange items + current exchange item (if any weight entered)
   double get totalExchangeValue => exchangeItemsTotal + (exchangeWeight > 0 ? currentExchangeValue : 0);
+  
+  // Total number of exchange items (saved + current if any)
+  int get totalExchangeCount => exchangeItems.length + (exchangeWeight > 0 ? 1 : 0);
 
   double get cgstAmount => amountAfterDiscount * kGstRate;
 
@@ -600,7 +607,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                 ),
                 if (totalExchangeValue > 0) ...[
                   pw.Divider(),
-                  pw.Text('EXCHANGE (${exchangeItems.length + (exchangeWeight > 0 ? 1 : 0)} items)',
+                  pw.Text('EXCHANGE ($totalExchangeCount items)',
                       style: pw.TextStyle(
                           fontSize: 16, fontWeight: pw.FontWeight.bold)),
                   // Add saved exchange items
@@ -1453,7 +1460,6 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   Widget _buildFinalAmountSection() {
     final totalItemsCount = items.length + (weightGm > 0 ? 1 : 0);
-    final totalExchangeCount = exchangeItems.length + (exchangeWeight > 0 ? 1 : 0);
     final amountWithGst = amountAfterDiscount + cgstAmount + sgstAmount;
     return Card(
       color: Colors.green.shade50,
