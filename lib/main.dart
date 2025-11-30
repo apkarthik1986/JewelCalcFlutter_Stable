@@ -38,6 +38,22 @@ class JewelItem {
   double get itemTotalWithGst => itemTotal + totalGst;
 }
 
+/// Represents an exchange item (old gold or silver) with its value calculation
+class ExchangeItem {
+  final String type;
+  final double weightGm;
+  final double ratePerGram;
+
+  ExchangeItem({
+    required this.type,
+    required this.weightGm,
+    required this.ratePerGram,
+  }) : assert(weightGm >= 0, 'weightGm must be non-negative'),
+       assert(ratePerGram >= 0, 'ratePerGram must be non-negative');
+
+  double get value => weightGm * ratePerGram;
+}
+
 class JewelCalcApp extends StatelessWidget {
   const JewelCalcApp({super.key});
 
@@ -102,13 +118,16 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   double discountAmount = 0.0;
   double discountPercentage = 0.0;
 
-  // Old Gold exchange fields
-  final TextEditingController oldGoldWeightController = TextEditingController();
-  String oldGoldType = 'Gold 22K/916';
-  double oldGoldWeight = 0.0;
+  // Exchange fields (for old gold/silver exchange)
+  final TextEditingController exchangeWeightController = TextEditingController();
+  String exchangeType = 'Gold 22K/916';
+  double exchangeWeight = 0.0;
 
   // List to store multiple items
   List<JewelItem> items = [];
+  
+  // List to store multiple exchange items
+  List<ExchangeItem> exchangeItems = [];
 
   @override
   void initState() {
@@ -227,7 +246,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       weightController.clear();
       wastageController.clear();
       makingChargesController.clear();
-      oldGoldWeightController.clear();
+      exchangeWeightController.clear();
       weightGm = 0.0;
       wastageGm = 0.0;
       makingCharges = 0.0;
@@ -235,9 +254,10 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       discountAmount = 0.0;
       discountPercentage = 0.0;
       discountType = 'None';
-      oldGoldWeight = 0.0;
-      oldGoldType = 'Gold 22K/916';
+      exchangeWeight = 0.0;
+      exchangeType = 'Gold 22K/916';
       items.clear();
+      exchangeItems.clear();
     });
   }
 
@@ -271,6 +291,35 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   void _removeItem(int index) {
     setState(() {
       items.removeAt(index);
+    });
+  }
+
+  void _resetCurrentExchangeInputs() {
+    setState(() {
+      exchangeWeightController.clear();
+      exchangeWeight = 0.0;
+    });
+  }
+
+  void _addCurrentExchangeItem() {
+    if (exchangeWeight <= 0) return;
+    
+    final rate = metalRates[exchangeType] ?? 0.0;
+    if (rate <= 0) return; // Don't add if rate is zero or not set
+    
+    setState(() {
+      exchangeItems.add(ExchangeItem(
+        type: exchangeType,
+        weightGm: exchangeWeight,
+        ratePerGram: rate,
+      ));
+      _resetCurrentExchangeInputs();
+    });
+  }
+
+  void _removeExchangeItem(int index) {
+    setState(() {
+      exchangeItems.removeAt(index);
     });
   }
 
@@ -318,15 +367,26 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   double get amountAfterDiscount => amountBeforeGst - actualDiscountAmount;
 
-  // Old gold value calculation (weight * rate of selected old gold type)
-  double get oldGoldRate => metalRates[oldGoldType] ?? 0.0;
-  double get oldGoldValue => oldGoldWeight * oldGoldRate;
+  // Exchange rate for current exchange item input
+  double get exchangeRate => metalRates[exchangeType] ?? 0.0;
+  
+  // Current exchange item value (before adding to list)
+  double get currentExchangeValue => exchangeWeight * exchangeRate;
+  
+  // Total value of all exchange items in the list
+  double get exchangeItemsTotal => exchangeItems.fold(0.0, (sum, item) => sum + item.value);
+  
+  // Total exchange value: all exchange items + current exchange item (if any weight entered)
+  double get totalExchangeValue => exchangeItemsTotal + (exchangeWeight > 0 ? currentExchangeValue : 0);
+  
+  // Total number of exchange items (saved + current if any)
+  int get totalExchangeCount => exchangeItems.length + (exchangeWeight > 0 ? 1 : 0);
 
   double get cgstAmount => amountAfterDiscount * kGstRate;
 
   double get sgstAmount => amountAfterDiscount * kGstRate;
 
-  double get finalAmount => amountAfterDiscount + cgstAmount + sgstAmount - oldGoldValue;
+  double get finalAmount => amountAfterDiscount + cgstAmount + sgstAmount - totalExchangeValue;
 
   Future<void> _generatePdf() async {
     final pdf = pw.Document();
@@ -545,44 +605,65 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         style: const pw.TextStyle(fontSize: 16)),
                   ],
                 ),
-                if (oldGoldValue > 0) ...[
+                if (totalExchangeValue > 0) ...[
                   pw.Divider(),
-                  pw.Text('OLD GOLD EXCHANGE',
+                  pw.Text('EXCHANGE ($totalExchangeCount items)',
                       style: pw.TextStyle(
                           fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  // Add saved exchange items
+                  ...exchangeItems.map((item) => pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('Type:',
-                          style: const pw.TextStyle(fontSize: 14)),
-                      pw.Text(oldGoldType,
-                          style: const pw.TextStyle(fontSize: 14)),
+                      pw.SizedBox(height: 4),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('${item.type}:',
+                              style: const pw.TextStyle(fontSize: 14)),
+                          pw.Text('${item.weightGm.toStringAsFixed(3)} gm @ Rs.${item.ratePerGram.toStringAsFixed(2)}/gm',
+                              style: const pw.TextStyle(fontSize: 14)),
+                        ],
+                      ),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Value:',
+                              style: const pw.TextStyle(fontSize: 14)),
+                          pw.Text('- Rs.${item.value.round()}',
+                              style: const pw.TextStyle(fontSize: 14)),
+                        ],
+                      ),
                     ],
-                  ),
+                  )),
+                  // Add current exchange item if any weight entered
+                  if (exchangeWeight > 0) ...[
+                    pw.SizedBox(height: 4),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('$exchangeType:',
+                            style: const pw.TextStyle(fontSize: 14)),
+                        pw.Text('${exchangeWeight.toStringAsFixed(3)} gm @ Rs.${exchangeRate.toStringAsFixed(2)}/gm',
+                            style: const pw.TextStyle(fontSize: 14)),
+                      ],
+                    ),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Value:',
+                            style: const pw.TextStyle(fontSize: 14)),
+                        pw.Text('- Rs.${currentExchangeValue.round()}',
+                            style: const pw.TextStyle(fontSize: 14)),
+                      ],
+                    ),
+                  ],
+                  pw.SizedBox(height: 8),
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      pw.Text('Weight:',
-                          style: const pw.TextStyle(fontSize: 14)),
-                      pw.Text('${oldGoldWeight.toStringAsFixed(3)} gm',
-                          style: const pw.TextStyle(fontSize: 14)),
-                    ],
-                  ),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text('Rate:',
-                          style: const pw.TextStyle(fontSize: 14)),
-                      pw.Text('Rs.${oldGoldRate.toStringAsFixed(2)}/gm',
-                          style: const pw.TextStyle(fontSize: 14)),
-                    ],
-                  ),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text('Old Gold Value:',
+                      pw.Text('Total Exchange Value:',
                           style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                      pw.Text('- Rs.${oldGoldValue.round()}',
+                      pw.Text('- Rs.${totalExchangeValue.round()}',
                           style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
                     ],
                   ),
@@ -591,7 +672,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text(oldGoldValue > 0 ? 'Net Payable:' : 'T.Amount:',
+                    pw.Text(totalExchangeValue > 0 ? 'Net Payable:' : 'T.Amount:',
                         style: pw.TextStyle(
                             fontSize: 20, fontWeight: pw.FontWeight.bold)),
                     pw.Text('Rs.${finalAmount.round()}',
@@ -657,7 +738,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             const SizedBox(height: 16),
             _buildGstSection(),
             const SizedBox(height: 16),
-            _buildOldGoldSection(),
+            _buildExchangeSection(),
             const SizedBox(height: 16),
             _buildFinalAmountSection(),
             const SizedBox(height: 16),
@@ -1199,9 +1280,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     );
   }
 
-  Widget _buildOldGoldSection() {
-    // Only show gold types for old gold exchange
-    final goldTypes = metalRates.keys.where((type) => type.contains('Gold')).toList();
+  Widget _buildExchangeSection() {
+    // Allow all metal types for exchange (gold and silver)
+    final allTypes = metalRates.keys.toList();
     
     return Card(
       child: Padding(
@@ -1210,12 +1291,12 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Old Gold Exchange',
+              'Exchange',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
-              'Enter old gold details to deduct from total',
+              'Enter old gold or silver details to deduct from total',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
@@ -1224,17 +1305,17 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                 Expanded(
                   flex: 2,
                   child: DropdownButtonFormField<String>(
-                    value: oldGoldType,
+                    value: exchangeType,
                     decoration: const InputDecoration(
-                      labelText: 'Old Gold Type',
+                      labelText: 'Type',
                       border: OutlineInputBorder(),
                     ),
-                    items: goldTypes.map((String type) {
+                    items: allTypes.map((String type) {
                       return DropdownMenuItem(value: type, child: Text(type));
                     }).toList(),
                     onChanged: (value) {
                       setState(() {
-                        oldGoldType = value!;
+                        exchangeType = value!;
                       });
                     },
                   ),
@@ -1243,7 +1324,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                 Expanded(
                   flex: 1,
                   child: TextField(
-                    controller: oldGoldWeightController,
+                    controller: exchangeWeightController,
                     decoration: const InputDecoration(
                       labelText: 'Weight (gm)',
                       border: OutlineInputBorder(),
@@ -1251,14 +1332,14 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                     keyboardType: TextInputType.number,
                     onChanged: (value) {
                       setState(() {
-                        oldGoldWeight = double.tryParse(value) ?? 0.0;
+                        exchangeWeight = double.tryParse(value) ?? 0.0;
                       });
                     },
                   ),
                 ),
               ],
             ),
-            if (oldGoldWeight > 0) ...[
+            if (exchangeWeight > 0) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -1271,17 +1352,17 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Old Gold Rate:'),
-                        Text('₹${oldGoldRate.toStringAsFixed(2)}/gm'),
+                        const Text('Rate:'),
+                        Text('₹${exchangeRate.toStringAsFixed(2)}/gm'),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Old Gold Value:',
+                        const Text('Current Item Value:',
                             style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('- ₹${oldGoldValue.round()}',
+                        Text('- ₹${currentExchangeValue.round()}',
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.orange)),
@@ -1289,6 +1370,86 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                     ),
                   ],
                 ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                key: const Key('add_exchange_item_button'),
+                onPressed: exchangeWeight > 0 ? _addCurrentExchangeItem : null,
+                icon: const Icon(Icons.swap_horiz),
+                label: const Text('Add Exchange Item'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.all(12),
+                ),
+              ),
+            ),
+            if (exchangeItems.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Added Exchange Items (${exchangeItems.length})',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  Text(
+                    'Total: - ₹${exchangeItemsTotal.round()}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: exchangeItems.length,
+                itemBuilder: (context, index) {
+                  final item = exchangeItems[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    color: Colors.orange.shade50,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${index + 1}. ${item.type}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                Text('${item.weightGm.toStringAsFixed(3)}gm @ ₹${item.ratePerGram.toStringAsFixed(2)}/gm'),
+                                Text(
+                                  'Value: - ₹${item.value.round()}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _removeExchangeItem(index),
+                            tooltip: 'Remove Exchange Item',
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ],
@@ -1314,7 +1475,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   style: const TextStyle(fontSize: 14),
                 ),
               ),
-            if (oldGoldValue > 0) ...[
+            if (totalExchangeValue > 0) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1328,9 +1489,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Old Gold (${oldGoldWeight.toStringAsFixed(3)}gm):',
+                  Text('Exchange ($totalExchangeCount items):',
                       style: const TextStyle(fontSize: 14, color: Colors.orange)),
-                  Text('- ₹${oldGoldValue.round()}',
+                  Text('- ₹${totalExchangeValue.round()}',
                       style: const TextStyle(fontSize: 14, color: Colors.orange)),
                 ],
               ),
@@ -1339,7 +1500,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(oldGoldValue > 0 ? '💰 Net Payable:' : '💰 Amount Incl. GST:',
+                Text(totalExchangeValue > 0 ? '💰 Net Payable:' : '💰 Amount Incl. GST:',
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 Text('₹${finalAmount.round()}',
                     style: const TextStyle(
@@ -1489,7 +1650,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     weightController.dispose();
     wastageController.dispose();
     makingChargesController.dispose();
-    oldGoldWeightController.dispose();
+    exchangeWeightController.dispose();
     for (var controller in metalRateControllers.values) {
       controller.dispose();
     }
