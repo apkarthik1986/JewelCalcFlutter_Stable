@@ -365,34 +365,23 @@ void main() {
     // Save settings
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
-    
-    // Wait for snackbar timer to complete (snackbar has 2 second duration)
-    await tester.pump(const Duration(seconds: 3));
+
+    // Scroll to find the Exchange section (use .first to target the main page's SingleChildScrollView)
+    await tester.drag(find.byType(SingleChildScrollView).first, kScrollToExchangeOffset);
     await tester.pumpAndSettle();
 
-    // Scroll to the Exchange section to ensure it's fully visible
-    await tester.drag(find.byType(SingleChildScrollView).first, kScrollToExchangeOffset, warnIfMissed: false);
-    await tester.pumpAndSettle();
-
-    // Find the exchange weight field and ensure it's visible
+    // Enter exchange weight (use .last since there are two Weight fields)
     final exchangeWeightField = find.widgetWithText(TextField, 'Weight (gm)').last;
-    await tester.ensureVisible(exchangeWeightField);
-    await tester.pumpAndSettle();
-
-    // Enter exchange weight
     await tester.enterText(exchangeWeightField, '5');
     await tester.pumpAndSettle();
 
-    // Unfocus the text field by tapping elsewhere on the page (not on the scaffold which includes the snackbar)
-    // This clears any focus/decoration overlays
-    FocusManager.instance.primaryFocus?.unfocus();
-    await tester.pumpAndSettle();
-
-    // Ensure the add button is visible and tap it
+    // Verify the add button is enabled (weight > 0)
     final addExchangeButton = find.byKey(const Key('add_exchange_item_button'));
-    await tester.ensureVisible(addExchangeButton);
-    await tester.pumpAndSettle();
-    await tester.tap(addExchangeButton, warnIfMissed: false);
+    final buttonWidget = tester.widget<ElevatedButton>(addExchangeButton);
+    expect(buttonWidget.onPressed, isNotNull, reason: 'Button should be enabled when weight > 0');
+
+    // Tap the add exchange item button
+    await tester.tap(addExchangeButton);
     await tester.pumpAndSettle();
 
     // Verify Added Exchange Items section appears
