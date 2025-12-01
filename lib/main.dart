@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +9,9 @@ import 'package:printing/printing.dart';
 
 /// GST rate constant (1.5% each for CGST and SGST)
 const double kGstRate = 0.015;
+
+/// Default wastage deduction percentage for silver exchange (30%)
+const double kSilverWastageDeductionRate = 0.30;
 
 void main() {
   runApp(const JewelCalcApp());
@@ -36,22 +41,75 @@ class JewelItem {
   double get sgst => itemTotal * kGstRate;
   double get totalGst => cgst + sgst;
   double get itemTotalWithGst => itemTotal + totalGst;
+
+  /// Serialize to a string for storage
+  String toStorageString() {
+    return '$type|$weightGm|$wastageGm|$ratePerGram|$makingCharges';
+  }
+
+  /// Deserialize from a storage string
+  static JewelItem? fromStorageString(String str) {
+    final parts = str.split('|');
+    if (parts.length != 5) return null;
+    try {
+      return JewelItem(
+        type: parts[0],
+        weightGm: double.parse(parts[1]),
+        wastageGm: double.parse(parts[2]),
+        ratePerGram: double.parse(parts[3]),
+        makingCharges: double.parse(parts[4]),
+      );
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 /// Represents an exchange item (old gold or silver) with its value calculation
 class ExchangeItem {
   final String type;
   final double weightGm;
+  final double wastageDeductionGm;
   final double ratePerGram;
 
   ExchangeItem({
     required this.type,
     required this.weightGm,
+    required this.wastageDeductionGm,
     required this.ratePerGram,
   }) : assert(weightGm >= 0, 'weightGm must be non-negative'),
+       assert(wastageDeductionGm >= 0, 'wastageDeductionGm must be non-negative'),
+       assert(wastageDeductionGm <= weightGm, 'wastageDeductionGm must not exceed weightGm'),
        assert(ratePerGram >= 0, 'ratePerGram must be non-negative');
 
-  double get value => weightGm * ratePerGram;
+  /// Net weight after wastage deduction (always non-negative)
+  double get netWeightGm => (weightGm - wastageDeductionGm).clamp(0, double.infinity);
+  double get value => netWeightGm * ratePerGram;
+
+  /// Serialize to a string for storage
+  String toStorageString() {
+    return '$type|$weightGm|$wastageDeductionGm|$ratePerGram';
+  }
+
+  /// Deserialize from a storage string
+  static ExchangeItem? fromStorageString(String str) {
+    final parts = str.split('|');
+    if (parts.length != 4) return null;
+    try {
+      final weightGm = double.parse(parts[1]);
+      final wastageDeductionGm = double.parse(parts[2]);
+      // Ensure wastageDeductionGm doesn't exceed weightGm
+      if (wastageDeductionGm > weightGm) return null;
+      return ExchangeItem(
+        type: parts[0],
+        weightGm: weightGm,
+        wastageDeductionGm: wastageDeductionGm,
+        ratePerGram: double.parse(parts[3]),
+      );
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 class JewelCalcApp extends StatelessWidget {
@@ -120,8 +178,10 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   // Exchange fields (for old gold/silver exchange)
   final TextEditingController exchangeWeightController = TextEditingController();
+  final TextEditingController exchangeWastageController = TextEditingController();
   String exchangeType = 'Gold 22K/916';
   double exchangeWeight = 0.0;
+  double exchangeWastageDeduction = 0.0;
 
   // List to store multiple items
   List<JewelItem> items = [];
@@ -151,6 +211,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     // Reset if new day
     if (lastDate != today) {
       await _resetToDefaults();
+      await _clearFormState();
       return;
     }
 
@@ -167,6 +228,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       // Update controllers with loaded values
       _updateSettingsControllers();
     });
+
+    // Load form state after base values are loaded
+    await _loadFormState();
   }
 
   void _updateSettingsControllers() {
@@ -197,6 +261,125 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     await prefs.setDouble('silver_wastage', silverWastagePercentage);
     await prefs.setDouble('gold_mc', goldMcPerGm);
     await prefs.setDouble('silver_mc', silverMcPerGm);
+  }
+
+  /// Save form state (customer info, items, exchange items, etc.) to persist across app sessions
+  Future<void> _saveFormState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Save customer information
+    await prefs.setString('form_bill_number', billNumberController.text);
+    await prefs.setString('form_customer_acc', customerAccController.text);
+    await prefs.setString('form_customer_name', customerNameController.text);
+    await prefs.setString('form_address', addressController.text);
+    await prefs.setString('form_mobile', mobileNumberController.text);
+
+    // Save current item input state
+    await prefs.setString('form_selected_type', selectedType);
+    await prefs.setDouble('form_weight', weightGm);
+    await prefs.setDouble('form_wastage', wastageGm);
+    await prefs.setDouble('form_making_charges', makingCharges);
+    await prefs.setString('form_mc_type', mcType);
+    await prefs.setDouble('form_mc_percentage', mcPercentage);
+
+    // Save discount state
+    await prefs.setString('form_discount_type', discountType);
+    await prefs.setDouble('form_discount_amount', discountAmount);
+    await prefs.setDouble('form_discount_percentage', discountPercentage);
+
+    // Save exchange input state
+    await prefs.setString('form_exchange_type', exchangeType);
+    await prefs.setDouble('form_exchange_weight', exchangeWeight);
+    await prefs.setDouble('form_exchange_wastage', exchangeWastageDeduction);
+
+    // Save items list
+    final itemStrings = items.map((item) => item.toStorageString()).toList();
+    await prefs.setStringList('form_items', itemStrings);
+
+    // Save exchange items list
+    final exchangeItemStrings = exchangeItems.map((item) => item.toStorageString()).toList();
+    await prefs.setStringList('form_exchange_items', exchangeItemStrings);
+  }
+
+  /// Load form state from SharedPreferences
+  Future<void> _loadFormState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      // Load customer information
+      billNumberController.text = prefs.getString('form_bill_number') ?? '';
+      customerAccController.text = prefs.getString('form_customer_acc') ?? '';
+      customerNameController.text = prefs.getString('form_customer_name') ?? '';
+      addressController.text = prefs.getString('form_address') ?? '';
+      mobileNumberController.text = prefs.getString('form_mobile') ?? '';
+
+      // Load current item input state
+      selectedType = prefs.getString('form_selected_type') ?? 'Gold 22K/916';
+      weightGm = prefs.getDouble('form_weight') ?? 0.0;
+      wastageGm = prefs.getDouble('form_wastage') ?? 0.0;
+      makingCharges = prefs.getDouble('form_making_charges') ?? 0.0;
+      mcType = prefs.getString('form_mc_type') ?? 'Rupees';
+      mcPercentage = prefs.getDouble('form_mc_percentage') ?? 0.0;
+
+      // Update controllers
+      weightController.text = weightGm > 0 ? weightGm.toString() : '';
+      wastageController.text = wastageGm > 0 ? wastageGm.toStringAsFixed(3) : '';
+      makingChargesController.text = makingCharges > 0 ? makingCharges.toString() : '';
+
+      // Load discount state
+      discountType = prefs.getString('form_discount_type') ?? 'None';
+      discountAmount = prefs.getDouble('form_discount_amount') ?? 0.0;
+      discountPercentage = prefs.getDouble('form_discount_percentage') ?? 0.0;
+
+      // Load exchange input state
+      exchangeType = prefs.getString('form_exchange_type') ?? 'Gold 22K/916';
+      exchangeWeight = prefs.getDouble('form_exchange_weight') ?? 0.0;
+      exchangeWastageDeduction = prefs.getDouble('form_exchange_wastage') ?? 0.0;
+
+      // Update exchange controllers
+      exchangeWeightController.text = exchangeWeight > 0 ? exchangeWeight.toString() : '';
+      exchangeWastageController.text = exchangeWastageDeduction > 0 ? exchangeWastageDeduction.toStringAsFixed(3) : '';
+
+      // Load items list
+      final itemStrings = prefs.getStringList('form_items') ?? [];
+      items = itemStrings
+          .map((str) => JewelItem.fromStorageString(str))
+          .whereType<JewelItem>()
+          .toList();
+
+      // Load exchange items list
+      final exchangeItemStrings = prefs.getStringList('form_exchange_items') ?? [];
+      exchangeItems = exchangeItemStrings
+          .map((str) => ExchangeItem.fromStorageString(str))
+          .whereType<ExchangeItem>()
+          .toList();
+    });
+  }
+
+  /// Clear form state from SharedPreferences
+  Future<void> _clearFormState() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Clear all form-related keys
+    await prefs.remove('form_bill_number');
+    await prefs.remove('form_customer_acc');
+    await prefs.remove('form_customer_name');
+    await prefs.remove('form_address');
+    await prefs.remove('form_mobile');
+    await prefs.remove('form_selected_type');
+    await prefs.remove('form_weight');
+    await prefs.remove('form_wastage');
+    await prefs.remove('form_making_charges');
+    await prefs.remove('form_mc_type');
+    await prefs.remove('form_mc_percentage');
+    await prefs.remove('form_discount_type');
+    await prefs.remove('form_discount_amount');
+    await prefs.remove('form_discount_percentage');
+    await prefs.remove('form_exchange_type');
+    await prefs.remove('form_exchange_weight');
+    await prefs.remove('form_exchange_wastage');
+    await prefs.remove('form_items');
+    await prefs.remove('form_exchange_items');
   }
 
   Future<void> _resetToDefaults() async {
@@ -247,6 +430,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       wastageController.clear();
       makingChargesController.clear();
       exchangeWeightController.clear();
+      exchangeWastageController.clear();
       weightGm = 0.0;
       wastageGm = 0.0;
       makingCharges = 0.0;
@@ -255,10 +439,13 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       discountPercentage = 0.0;
       discountType = 'None';
       exchangeWeight = 0.0;
+      exchangeWastageDeduction = 0.0;
       exchangeType = 'Gold 22K/916';
       items.clear();
       exchangeItems.clear();
     });
+    // Clear persisted form state (fire-and-forget, fast operation)
+    unawaited(_clearFormState());
   }
 
   void _resetCurrentItemInputs() {
@@ -286,18 +473,24 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       ));
       _resetCurrentItemInputs();
     });
+    // Save form state after adding item (fire-and-forget, fast operation)
+    unawaited(_saveFormState());
   }
 
   void _removeItem(int index) {
     setState(() {
       items.removeAt(index);
     });
+    // Save form state after removing item (fire-and-forget, fast operation)
+    unawaited(_saveFormState());
   }
 
   void _resetCurrentExchangeInputs() {
     setState(() {
       exchangeWeightController.clear();
+      exchangeWastageController.clear();
       exchangeWeight = 0.0;
+      exchangeWastageDeduction = 0.0;
     });
   }
 
@@ -311,16 +504,21 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       exchangeItems.add(ExchangeItem(
         type: exchangeType,
         weightGm: exchangeWeight,
+        wastageDeductionGm: exchangeWastageDeduction,
         ratePerGram: rate,
       ));
       _resetCurrentExchangeInputs();
     });
+    // Save form state after adding exchange item (fire-and-forget, fast operation)
+    unawaited(_saveFormState());
   }
 
   void _removeExchangeItem(int index) {
     setState(() {
       exchangeItems.removeAt(index);
     });
+    // Save form state after removing exchange item (fire-and-forget, fast operation)
+    unawaited(_saveFormState());
   }
 
   double get netWeightGm => weightGm + wastageGm;
@@ -370,8 +568,11 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   // Exchange rate for current exchange item input
   double get exchangeRate => metalRates[exchangeType] ?? 0.0;
   
+  // Net weight after wastage deduction for current exchange item
+  double get currentExchangeNetWeight => exchangeWeight - exchangeWastageDeduction;
+  
   // Current exchange item value (before adding to list)
-  double get currentExchangeValue => exchangeWeight * exchangeRate;
+  double get currentExchangeValue => currentExchangeNetWeight * exchangeRate;
   
   // Total value of all exchange items in the list
   double get exchangeItemsTotal => exchangeItems.fold(0.0, (sum, item) => sum + item.value);
@@ -389,6 +590,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   double get finalAmount => amountAfterDiscount + cgstAmount + sgstAmount - totalExchangeValue;
 
   Future<void> _generatePdf() async {
+    // Save form state before printing to ensure data persists
+    await _saveFormState();
+    
     final pdf = pw.Document();
     
     // Build list of item widgets for PDF
@@ -421,6 +625,13 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             children: [
               pw.Text('Making Charges:', style: const pw.TextStyle(fontSize: 14)),
               pw.Text('Rs.${item.makingCharges.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('Sub Total:', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Rs.${item.itemTotal.round()}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
             ],
           ),
           pw.Row(
@@ -478,6 +689,13 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             children: [
               pw.Text('Making Charges:', style: const pw.TextStyle(fontSize: 14)),
               pw.Text('Rs.${makingCharges.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('Sub Total:', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Rs.${currentAmountBeforeGst.round()}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
             ],
           ),
           pw.Row(
@@ -605,6 +823,17 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         style: const pw.TextStyle(fontSize: 16)),
                   ],
                 ),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Overall Total:',
+                        style: pw.TextStyle(
+                            fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Rs.${(amountAfterDiscount + cgstAmount + sgstAmount).round()}',
+                        style: pw.TextStyle(
+                            fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
                 if (totalExchangeValue > 0) ...[
                   pw.Divider(),
                   pw.Text('EXCHANGE ($totalExchangeCount items)',
@@ -619,6 +848,12 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                           style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                       pw.Text('${item.weightGm.toStringAsFixed(3)} gm @ Rs.${item.ratePerGram.toStringAsFixed(2)}/gm',
                           style: const pw.TextStyle(fontSize: 12)),
+                      if (item.wastageDeductionGm > 0)
+                        pw.Text('Wastage Deduction: ${item.wastageDeductionGm.toStringAsFixed(3)} gm',
+                            style: const pw.TextStyle(fontSize: 12)),
+                      if (item.wastageDeductionGm > 0)
+                        pw.Text('Net Weight: ${item.netWeightGm.toStringAsFixed(3)} gm',
+                            style: const pw.TextStyle(fontSize: 12)),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
@@ -637,6 +872,12 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     pw.Text('${exchangeWeight.toStringAsFixed(3)} gm @ Rs.${exchangeRate.toStringAsFixed(2)}/gm',
                         style: const pw.TextStyle(fontSize: 12)),
+                    if (exchangeWastageDeduction > 0)
+                      pw.Text('Wastage Deduction: ${exchangeWastageDeduction.toStringAsFixed(3)} gm',
+                          style: const pw.TextStyle(fontSize: 12)),
+                    if (exchangeWastageDeduction > 0)
+                      pw.Text('Net Weight: ${currentExchangeNetWeight.toStringAsFixed(3)} gm',
+                          style: const pw.TextStyle(fontSize: 12)),
                     pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
@@ -1273,6 +1514,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   Widget _buildExchangeSection() {
     // Allow all metal types for exchange (gold and silver)
     final allTypes = metalRates.keys.toList();
+    final isExchangeSilver = exchangeType == 'Silver';
     
     return Card(
       child: Padding(
@@ -1306,6 +1548,15 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                     onChanged: (value) {
                       setState(() {
                         exchangeType = value!;
+                        // For Silver, auto-calculate wastage deduction using constant rate
+                        if (exchangeType == 'Silver' && exchangeWeight > 0) {
+                          exchangeWastageDeduction = exchangeWeight * kSilverWastageDeductionRate;
+                          exchangeWastageController.text = exchangeWastageDeduction.toStringAsFixed(3);
+                        } else if (exchangeType != 'Silver') {
+                          // For Gold, reset wastage to 0 (manual entry only)
+                          exchangeWastageDeduction = 0.0;
+                          exchangeWastageController.clear();
+                        }
                       });
                     },
                   ),
@@ -1323,6 +1574,11 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                     onChanged: (value) {
                       setState(() {
                         exchangeWeight = double.tryParse(value) ?? 0.0;
+                        // For Silver, auto-calculate wastage deduction using constant rate
+                        if (exchangeType == 'Silver' && exchangeWeight > 0) {
+                          exchangeWastageDeduction = exchangeWeight * kSilverWastageDeductionRate;
+                          exchangeWastageController.text = exchangeWastageDeduction.toStringAsFixed(3);
+                        }
                       });
                     },
                   ),
@@ -1330,6 +1586,28 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
               ],
             ),
             if (exchangeWeight > 0) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: exchangeWastageController,
+                decoration: InputDecoration(
+                  labelText: 'Wastage Deduction (gm)',
+                  border: const OutlineInputBorder(),
+                  helperText: isExchangeSilver 
+                      ? 'Auto 30% deduction, can be manually changed'
+                      : 'Manual entry only',
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  setState(() {
+                    exchangeWastageDeduction = double.tryParse(value) ?? 0.0;
+                    // Ensure wastage deduction is not more than weight
+                    if (exchangeWastageDeduction > exchangeWeight) {
+                      exchangeWastageDeduction = exchangeWeight;
+                      exchangeWastageController.text = exchangeWastageDeduction.toStringAsFixed(3);
+                    }
+                  });
+                },
+              ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -1346,6 +1624,16 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         Text('₹${exchangeRate.toStringAsFixed(2)}/gm'),
                       ],
                     ),
+                    if (exchangeWastageDeduction > 0) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Net Weight:'),
+                          Text('${currentExchangeNetWeight.toStringAsFixed(3)} gm'),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1420,6 +1708,10 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                                   style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
                                 Text('${item.weightGm.toStringAsFixed(3)}gm @ ₹${item.ratePerGram.toStringAsFixed(2)}/gm'),
+                                if (item.wastageDeductionGm > 0)
+                                  Text('Wastage Deduction: ${item.wastageDeductionGm.toStringAsFixed(3)}gm'),
+                                if (item.wastageDeductionGm > 0)
+                                  Text('Net Weight: ${item.netWeightGm.toStringAsFixed(3)}gm'),
                                 Text(
                                   'Value: - ₹${item.value.round()}',
                                   style: const TextStyle(
@@ -1641,6 +1933,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     wastageController.dispose();
     makingChargesController.dispose();
     exchangeWeightController.dispose();
+    exchangeWastageController.dispose();
     for (var controller in metalRateControllers.values) {
       controller.dispose();
     }

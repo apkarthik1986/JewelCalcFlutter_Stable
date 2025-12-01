@@ -402,10 +402,87 @@ void main() {
     final item = ExchangeItem(
       type: 'Gold 22K/916',
       weightGm: 10.0,
+      wastageDeductionGm: 0.0,
       ratePerGram: 6000.0,
     );
 
+    // Net weight = 10 - 0 = 10
+    expect(item.netWeightGm, 10.0);
     // Value = 10 * 6000 = 60000
     expect(item.value, 60000.0);
+  });
+
+  test('ExchangeItem with wastage deduction calculates correctly', () {
+    final item = ExchangeItem(
+      type: 'Silver',
+      weightGm: 100.0,
+      wastageDeductionGm: 30.0, // 30% automatic deduction for silver
+      ratePerGram: 196.0,
+    );
+
+    // Net weight = 100 - 30 = 70
+    expect(item.netWeightGm, 70.0);
+    // Value = 70 * 196 = 13720
+    expect(item.value, 13720.0);
+  });
+
+  test('JewelItem serialization and deserialization works correctly', () {
+    final item = JewelItem(
+      type: 'Gold 22K/916',
+      weightGm: 10.0,
+      wastageGm: 1.0,
+      ratePerGram: 6000.0,
+      makingCharges: 350.0,
+    );
+
+    // Serialize
+    final serialized = item.toStorageString();
+    expect(serialized, 'Gold 22K/916|10.0|1.0|6000.0|350.0');
+
+    // Deserialize
+    final deserialized = JewelItem.fromStorageString(serialized);
+    expect(deserialized, isNotNull);
+    expect(deserialized!.type, 'Gold 22K/916');
+    expect(deserialized.weightGm, 10.0);
+    expect(deserialized.wastageGm, 1.0);
+    expect(deserialized.ratePerGram, 6000.0);
+    expect(deserialized.makingCharges, 350.0);
+  });
+
+  test('JewelItem deserialization handles invalid data', () {
+    // Invalid format
+    expect(JewelItem.fromStorageString('invalid'), isNull);
+    expect(JewelItem.fromStorageString('a|b|c'), isNull);
+    expect(JewelItem.fromStorageString('Gold|a|b|c|d'), isNull);
+  });
+
+  test('ExchangeItem serialization and deserialization works correctly', () {
+    final item = ExchangeItem(
+      type: 'Silver',
+      weightGm: 100.0,
+      wastageDeductionGm: 30.0,
+      ratePerGram: 196.0,
+    );
+
+    // Serialize
+    final serialized = item.toStorageString();
+    expect(serialized, 'Silver|100.0|30.0|196.0');
+
+    // Deserialize
+    final deserialized = ExchangeItem.fromStorageString(serialized);
+    expect(deserialized, isNotNull);
+    expect(deserialized!.type, 'Silver');
+    expect(deserialized.weightGm, 100.0);
+    expect(deserialized.wastageDeductionGm, 30.0);
+    expect(deserialized.ratePerGram, 196.0);
+  });
+
+  test('ExchangeItem deserialization handles invalid data', () {
+    // Invalid format
+    expect(ExchangeItem.fromStorageString('invalid'), isNull);
+    expect(ExchangeItem.fromStorageString('a|b|c'), isNull);
+    expect(ExchangeItem.fromStorageString('Silver|a|b|c'), isNull);
+    // wastageDeductionGm > weightGm
+    expect(ExchangeItem.fromStorageString('Silver|10.0|20.0|196.0'), isNull);
   });
 }
