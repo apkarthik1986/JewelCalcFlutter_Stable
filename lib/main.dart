@@ -8,6 +8,9 @@ import 'package:printing/printing.dart';
 /// GST rate constant (1.5% each for CGST and SGST)
 const double kGstRate = 0.015;
 
+/// Default wastage deduction percentage for silver exchange (30%)
+const double kSilverWastageDeductionRate = 0.30;
+
 void main() {
   runApp(const JewelCalcApp());
 }
@@ -52,9 +55,11 @@ class ExchangeItem {
     required this.ratePerGram,
   }) : assert(weightGm >= 0, 'weightGm must be non-negative'),
        assert(wastageDeductionGm >= 0, 'wastageDeductionGm must be non-negative'),
+       assert(wastageDeductionGm <= weightGm, 'wastageDeductionGm must not exceed weightGm'),
        assert(ratePerGram >= 0, 'ratePerGram must be non-negative');
 
-  double get netWeightGm => weightGm - wastageDeductionGm;
+  /// Net weight after wastage deduction (always non-negative)
+  double get netWeightGm => (weightGm - wastageDeductionGm).clamp(0, double.infinity);
   double get value => netWeightGm * ratePerGram;
 }
 
@@ -1358,9 +1363,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                     onChanged: (value) {
                       setState(() {
                         exchangeType = value!;
-                        // For Silver, auto-calculate 30% wastage deduction
+                        // For Silver, auto-calculate wastage deduction using constant rate
                         if (exchangeType == 'Silver' && exchangeWeight > 0) {
-                          exchangeWastageDeduction = exchangeWeight * 0.30;
+                          exchangeWastageDeduction = exchangeWeight * kSilverWastageDeductionRate;
                           exchangeWastageController.text = exchangeWastageDeduction.toStringAsFixed(3);
                         } else if (exchangeType != 'Silver') {
                           // For Gold, reset wastage to 0 (manual entry only)
@@ -1384,9 +1389,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                     onChanged: (value) {
                       setState(() {
                         exchangeWeight = double.tryParse(value) ?? 0.0;
-                        // For Silver, auto-calculate 30% wastage deduction
+                        // For Silver, auto-calculate wastage deduction using constant rate
                         if (exchangeType == 'Silver' && exchangeWeight > 0) {
-                          exchangeWastageDeduction = exchangeWeight * 0.30;
+                          exchangeWastageDeduction = exchangeWeight * kSilverWastageDeductionRate;
                           exchangeWastageController.text = exchangeWastageDeduction.toStringAsFixed(3);
                         }
                       });
