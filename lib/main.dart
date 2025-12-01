@@ -39,6 +39,28 @@ class JewelItem {
   double get sgst => itemTotal * kGstRate;
   double get totalGst => cgst + sgst;
   double get itemTotalWithGst => itemTotal + totalGst;
+
+  /// Serialize to a string for storage
+  String toStorageString() {
+    return '$type|$weightGm|$wastageGm|$ratePerGram|$makingCharges';
+  }
+
+  /// Deserialize from a storage string
+  static JewelItem? fromStorageString(String str) {
+    final parts = str.split('|');
+    if (parts.length != 5) return null;
+    try {
+      return JewelItem(
+        type: parts[0],
+        weightGm: double.parse(parts[1]),
+        wastageGm: double.parse(parts[2]),
+        ratePerGram: double.parse(parts[3]),
+        makingCharges: double.parse(parts[4]),
+      );
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 /// Represents an exchange item (old gold or silver) with its value calculation
@@ -61,6 +83,31 @@ class ExchangeItem {
   /// Net weight after wastage deduction (always non-negative)
   double get netWeightGm => (weightGm - wastageDeductionGm).clamp(0, double.infinity);
   double get value => netWeightGm * ratePerGram;
+
+  /// Serialize to a string for storage
+  String toStorageString() {
+    return '$type|$weightGm|$wastageDeductionGm|$ratePerGram';
+  }
+
+  /// Deserialize from a storage string
+  static ExchangeItem? fromStorageString(String str) {
+    final parts = str.split('|');
+    if (parts.length != 4) return null;
+    try {
+      final weightGm = double.parse(parts[1]);
+      final wastageDeductionGm = double.parse(parts[2]);
+      // Ensure wastageDeductionGm doesn't exceed weightGm
+      if (wastageDeductionGm > weightGm) return null;
+      return ExchangeItem(
+        type: parts[0],
+        weightGm: weightGm,
+        wastageDeductionGm: wastageDeductionGm,
+        ratePerGram: double.parse(parts[3]),
+      );
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 class JewelCalcApp extends StatelessWidget {
@@ -162,6 +209,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     // Reset if new day
     if (lastDate != today) {
       await _resetToDefaults();
+      await _clearFormState();
       return;
     }
 
@@ -178,6 +226,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       // Update controllers with loaded values
       _updateSettingsControllers();
     });
+
+    // Load form state after base values are loaded
+    await _loadFormState();
   }
 
   void _updateSettingsControllers() {
@@ -208,6 +259,125 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     await prefs.setDouble('silver_wastage', silverWastagePercentage);
     await prefs.setDouble('gold_mc', goldMcPerGm);
     await prefs.setDouble('silver_mc', silverMcPerGm);
+  }
+
+  /// Save form state (customer info, items, exchange items, etc.) to persist across app sessions
+  Future<void> _saveFormState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Save customer information
+    await prefs.setString('form_bill_number', billNumberController.text);
+    await prefs.setString('form_customer_acc', customerAccController.text);
+    await prefs.setString('form_customer_name', customerNameController.text);
+    await prefs.setString('form_address', addressController.text);
+    await prefs.setString('form_mobile', mobileNumberController.text);
+
+    // Save current item input state
+    await prefs.setString('form_selected_type', selectedType);
+    await prefs.setDouble('form_weight', weightGm);
+    await prefs.setDouble('form_wastage', wastageGm);
+    await prefs.setDouble('form_making_charges', makingCharges);
+    await prefs.setString('form_mc_type', mcType);
+    await prefs.setDouble('form_mc_percentage', mcPercentage);
+
+    // Save discount state
+    await prefs.setString('form_discount_type', discountType);
+    await prefs.setDouble('form_discount_amount', discountAmount);
+    await prefs.setDouble('form_discount_percentage', discountPercentage);
+
+    // Save exchange input state
+    await prefs.setString('form_exchange_type', exchangeType);
+    await prefs.setDouble('form_exchange_weight', exchangeWeight);
+    await prefs.setDouble('form_exchange_wastage', exchangeWastageDeduction);
+
+    // Save items list
+    final itemStrings = items.map((item) => item.toStorageString()).toList();
+    await prefs.setStringList('form_items', itemStrings);
+
+    // Save exchange items list
+    final exchangeItemStrings = exchangeItems.map((item) => item.toStorageString()).toList();
+    await prefs.setStringList('form_exchange_items', exchangeItemStrings);
+  }
+
+  /// Load form state from SharedPreferences
+  Future<void> _loadFormState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      // Load customer information
+      billNumberController.text = prefs.getString('form_bill_number') ?? '';
+      customerAccController.text = prefs.getString('form_customer_acc') ?? '';
+      customerNameController.text = prefs.getString('form_customer_name') ?? '';
+      addressController.text = prefs.getString('form_address') ?? '';
+      mobileNumberController.text = prefs.getString('form_mobile') ?? '';
+
+      // Load current item input state
+      selectedType = prefs.getString('form_selected_type') ?? 'Gold 22K/916';
+      weightGm = prefs.getDouble('form_weight') ?? 0.0;
+      wastageGm = prefs.getDouble('form_wastage') ?? 0.0;
+      makingCharges = prefs.getDouble('form_making_charges') ?? 0.0;
+      mcType = prefs.getString('form_mc_type') ?? 'Rupees';
+      mcPercentage = prefs.getDouble('form_mc_percentage') ?? 0.0;
+
+      // Update controllers
+      weightController.text = weightGm > 0 ? weightGm.toString() : '';
+      wastageController.text = wastageGm > 0 ? wastageGm.toStringAsFixed(3) : '';
+      makingChargesController.text = makingCharges > 0 ? makingCharges.toString() : '';
+
+      // Load discount state
+      discountType = prefs.getString('form_discount_type') ?? 'None';
+      discountAmount = prefs.getDouble('form_discount_amount') ?? 0.0;
+      discountPercentage = prefs.getDouble('form_discount_percentage') ?? 0.0;
+
+      // Load exchange input state
+      exchangeType = prefs.getString('form_exchange_type') ?? 'Gold 22K/916';
+      exchangeWeight = prefs.getDouble('form_exchange_weight') ?? 0.0;
+      exchangeWastageDeduction = prefs.getDouble('form_exchange_wastage') ?? 0.0;
+
+      // Update exchange controllers
+      exchangeWeightController.text = exchangeWeight > 0 ? exchangeWeight.toString() : '';
+      exchangeWastageController.text = exchangeWastageDeduction > 0 ? exchangeWastageDeduction.toStringAsFixed(3) : '';
+
+      // Load items list
+      final itemStrings = prefs.getStringList('form_items') ?? [];
+      items = itemStrings
+          .map((str) => JewelItem.fromStorageString(str))
+          .whereType<JewelItem>()
+          .toList();
+
+      // Load exchange items list
+      final exchangeItemStrings = prefs.getStringList('form_exchange_items') ?? [];
+      exchangeItems = exchangeItemStrings
+          .map((str) => ExchangeItem.fromStorageString(str))
+          .whereType<ExchangeItem>()
+          .toList();
+    });
+  }
+
+  /// Clear form state from SharedPreferences
+  Future<void> _clearFormState() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Clear all form-related keys
+    await prefs.remove('form_bill_number');
+    await prefs.remove('form_customer_acc');
+    await prefs.remove('form_customer_name');
+    await prefs.remove('form_address');
+    await prefs.remove('form_mobile');
+    await prefs.remove('form_selected_type');
+    await prefs.remove('form_weight');
+    await prefs.remove('form_wastage');
+    await prefs.remove('form_making_charges');
+    await prefs.remove('form_mc_type');
+    await prefs.remove('form_mc_percentage');
+    await prefs.remove('form_discount_type');
+    await prefs.remove('form_discount_amount');
+    await prefs.remove('form_discount_percentage');
+    await prefs.remove('form_exchange_type');
+    await prefs.remove('form_exchange_weight');
+    await prefs.remove('form_exchange_wastage');
+    await prefs.remove('form_items');
+    await prefs.remove('form_exchange_items');
   }
 
   Future<void> _resetToDefaults() async {
@@ -272,6 +442,8 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       items.clear();
       exchangeItems.clear();
     });
+    // Clear persisted form state
+    _clearFormState();
   }
 
   void _resetCurrentItemInputs() {
@@ -299,12 +471,16 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       ));
       _resetCurrentItemInputs();
     });
+    // Save form state after adding item
+    _saveFormState();
   }
 
   void _removeItem(int index) {
     setState(() {
       items.removeAt(index);
     });
+    // Save form state after removing item
+    _saveFormState();
   }
 
   void _resetCurrentExchangeInputs() {
@@ -331,12 +507,16 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       ));
       _resetCurrentExchangeInputs();
     });
+    // Save form state after adding exchange item
+    _saveFormState();
   }
 
   void _removeExchangeItem(int index) {
     setState(() {
       exchangeItems.removeAt(index);
     });
+    // Save form state after removing exchange item
+    _saveFormState();
   }
 
   double get netWeightGm => weightGm + wastageGm;
@@ -408,6 +588,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   double get finalAmount => amountAfterDiscount + cgstAmount + sgstAmount - totalExchangeValue;
 
   Future<void> _generatePdf() async {
+    // Save form state before printing to ensure data persists
+    await _saveFormState();
+    
     final pdf = pw.Document();
     
     // Build list of item widgets for PDF
