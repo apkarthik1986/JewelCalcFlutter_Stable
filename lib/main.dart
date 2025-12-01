@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -442,8 +444,8 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       items.clear();
       exchangeItems.clear();
     });
-    // Clear persisted form state
-    _clearFormState();
+    // Clear persisted form state (fire-and-forget, fast operation)
+    unawaited(_clearFormState());
   }
 
   void _resetCurrentItemInputs() {
@@ -471,16 +473,16 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       ));
       _resetCurrentItemInputs();
     });
-    // Save form state after adding item
-    _saveFormState();
+    // Save form state after adding item (fire-and-forget, fast operation)
+    unawaited(_saveFormState());
   }
 
   void _removeItem(int index) {
     setState(() {
       items.removeAt(index);
     });
-    // Save form state after removing item
-    _saveFormState();
+    // Save form state after removing item (fire-and-forget, fast operation)
+    unawaited(_saveFormState());
   }
 
   void _resetCurrentExchangeInputs() {
@@ -507,16 +509,16 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       ));
       _resetCurrentExchangeInputs();
     });
-    // Save form state after adding exchange item
-    _saveFormState();
+    // Save form state after adding exchange item (fire-and-forget, fast operation)
+    unawaited(_saveFormState());
   }
 
   void _removeExchangeItem(int index) {
     setState(() {
       exchangeItems.removeAt(index);
     });
-    // Save form state after removing exchange item
-    _saveFormState();
+    // Save form state after removing exchange item (fire-and-forget, fast operation)
+    unawaited(_saveFormState());
   }
 
   double get netWeightGm => weightGm + wastageGm;
