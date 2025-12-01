@@ -8,6 +8,9 @@ import 'package:printing/printing.dart';
 /// GST rate constant (1.5% each for CGST and SGST)
 const double kGstRate = 0.015;
 
+/// Default wastage deduction percentage for silver exchange (30%)
+const double kSilverWastageDeductionRate = 0.30;
+
 void main() {
   runApp(const JewelCalcApp());
 }
@@ -42,16 +45,22 @@ class JewelItem {
 class ExchangeItem {
   final String type;
   final double weightGm;
+  final double wastageDeductionGm;
   final double ratePerGram;
 
   ExchangeItem({
     required this.type,
     required this.weightGm,
+    required this.wastageDeductionGm,
     required this.ratePerGram,
   }) : assert(weightGm >= 0, 'weightGm must be non-negative'),
+       assert(wastageDeductionGm >= 0, 'wastageDeductionGm must be non-negative'),
+       assert(wastageDeductionGm <= weightGm, 'wastageDeductionGm must not exceed weightGm'),
        assert(ratePerGram >= 0, 'ratePerGram must be non-negative');
 
-  double get value => weightGm * ratePerGram;
+  /// Net weight after wastage deduction (always non-negative)
+  double get netWeightGm => (weightGm - wastageDeductionGm).clamp(0, double.infinity);
+  double get value => netWeightGm * ratePerGram;
 }
 
 class JewelCalcApp extends StatelessWidget {
@@ -120,8 +129,10 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   // Exchange fields (for old gold/silver exchange)
   final TextEditingController exchangeWeightController = TextEditingController();
+  final TextEditingController exchangeWastageController = TextEditingController();
   String exchangeType = 'Gold 22K/916';
   double exchangeWeight = 0.0;
+  double exchangeWastageDeduction = 0.0;
 
   // List to store multiple items
   List<JewelItem> items = [];
@@ -247,6 +258,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       wastageController.clear();
       makingChargesController.clear();
       exchangeWeightController.clear();
+      exchangeWastageController.clear();
       weightGm = 0.0;
       wastageGm = 0.0;
       makingCharges = 0.0;
@@ -255,6 +267,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       discountPercentage = 0.0;
       discountType = 'None';
       exchangeWeight = 0.0;
+      exchangeWastageDeduction = 0.0;
       exchangeType = 'Gold 22K/916';
       items.clear();
       exchangeItems.clear();
@@ -297,7 +310,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   void _resetCurrentExchangeInputs() {
     setState(() {
       exchangeWeightController.clear();
+      exchangeWastageController.clear();
       exchangeWeight = 0.0;
+      exchangeWastageDeduction = 0.0;
     });
   }
 
@@ -311,6 +326,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       exchangeItems.add(ExchangeItem(
         type: exchangeType,
         weightGm: exchangeWeight,
+        wastageDeductionGm: exchangeWastageDeduction,
         ratePerGram: rate,
       ));
       _resetCurrentExchangeInputs();
@@ -370,8 +386,11 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   // Exchange rate for current exchange item input
   double get exchangeRate => metalRates[exchangeType] ?? 0.0;
   
+  // Net weight after wastage deduction for current exchange item
+  double get currentExchangeNetWeight => exchangeWeight - exchangeWastageDeduction;
+  
   // Current exchange item value (before adding to list)
-  double get currentExchangeValue => exchangeWeight * exchangeRate;
+  double get currentExchangeValue => currentExchangeNetWeight * exchangeRate;
   
   // Total value of all exchange items in the list
   double get exchangeItemsTotal => exchangeItems.fold(0.0, (sum, item) => sum + item.value);
@@ -421,6 +440,13 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             children: [
               pw.Text('Making Charges:', style: const pw.TextStyle(fontSize: 14)),
               pw.Text('Rs.${item.makingCharges.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('Sub Total:', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Rs.${item.itemTotal.round()}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
             ],
           ),
           pw.Row(
@@ -478,6 +504,13 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             children: [
               pw.Text('Making Charges:', style: const pw.TextStyle(fontSize: 14)),
               pw.Text('Rs.${makingCharges.toStringAsFixed(2)}', style: const pw.TextStyle(fontSize: 14)),
+            ],
+          ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('Sub Total:', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Rs.${currentAmountBeforeGst.round()}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
             ],
           ),
           pw.Row(
@@ -605,6 +638,17 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         style: const pw.TextStyle(fontSize: 16)),
                   ],
                 ),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('Overall Total:',
+                        style: pw.TextStyle(
+                            fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Rs.${(amountAfterDiscount + cgstAmount + sgstAmount).round()}',
+                        style: pw.TextStyle(
+                            fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
                 if (totalExchangeValue > 0) ...[
                   pw.Divider(),
                   pw.Text('EXCHANGE ($totalExchangeCount items)',
@@ -619,6 +663,12 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                           style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                       pw.Text('${item.weightGm.toStringAsFixed(3)} gm @ Rs.${item.ratePerGram.toStringAsFixed(2)}/gm',
                           style: const pw.TextStyle(fontSize: 12)),
+                      if (item.wastageDeductionGm > 0)
+                        pw.Text('Wastage Deduction: ${item.wastageDeductionGm.toStringAsFixed(3)} gm',
+                            style: const pw.TextStyle(fontSize: 12)),
+                      if (item.wastageDeductionGm > 0)
+                        pw.Text('Net Weight: ${item.netWeightGm.toStringAsFixed(3)} gm',
+                            style: const pw.TextStyle(fontSize: 12)),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
@@ -637,6 +687,12 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     pw.Text('${exchangeWeight.toStringAsFixed(3)} gm @ Rs.${exchangeRate.toStringAsFixed(2)}/gm',
                         style: const pw.TextStyle(fontSize: 12)),
+                    if (exchangeWastageDeduction > 0)
+                      pw.Text('Wastage Deduction: ${exchangeWastageDeduction.toStringAsFixed(3)} gm',
+                          style: const pw.TextStyle(fontSize: 12)),
+                    if (exchangeWastageDeduction > 0)
+                      pw.Text('Net Weight: ${currentExchangeNetWeight.toStringAsFixed(3)} gm',
+                          style: const pw.TextStyle(fontSize: 12)),
                     pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
@@ -1273,6 +1329,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   Widget _buildExchangeSection() {
     // Allow all metal types for exchange (gold and silver)
     final allTypes = metalRates.keys.toList();
+    final isExchangeSilver = exchangeType == 'Silver';
     
     return Card(
       child: Padding(
@@ -1306,6 +1363,15 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                     onChanged: (value) {
                       setState(() {
                         exchangeType = value!;
+                        // For Silver, auto-calculate wastage deduction using constant rate
+                        if (exchangeType == 'Silver' && exchangeWeight > 0) {
+                          exchangeWastageDeduction = exchangeWeight * kSilverWastageDeductionRate;
+                          exchangeWastageController.text = exchangeWastageDeduction.toStringAsFixed(3);
+                        } else if (exchangeType != 'Silver') {
+                          // For Gold, reset wastage to 0 (manual entry only)
+                          exchangeWastageDeduction = 0.0;
+                          exchangeWastageController.clear();
+                        }
                       });
                     },
                   ),
@@ -1323,6 +1389,11 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                     onChanged: (value) {
                       setState(() {
                         exchangeWeight = double.tryParse(value) ?? 0.0;
+                        // For Silver, auto-calculate wastage deduction using constant rate
+                        if (exchangeType == 'Silver' && exchangeWeight > 0) {
+                          exchangeWastageDeduction = exchangeWeight * kSilverWastageDeductionRate;
+                          exchangeWastageController.text = exchangeWastageDeduction.toStringAsFixed(3);
+                        }
                       });
                     },
                   ),
@@ -1330,6 +1401,28 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
               ],
             ),
             if (exchangeWeight > 0) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: exchangeWastageController,
+                decoration: InputDecoration(
+                  labelText: 'Wastage Deduction (gm)',
+                  border: const OutlineInputBorder(),
+                  helperText: isExchangeSilver 
+                      ? 'Auto 30% deduction, can be manually changed'
+                      : 'Manual entry only',
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  setState(() {
+                    exchangeWastageDeduction = double.tryParse(value) ?? 0.0;
+                    // Ensure wastage deduction is not more than weight
+                    if (exchangeWastageDeduction > exchangeWeight) {
+                      exchangeWastageDeduction = exchangeWeight;
+                      exchangeWastageController.text = exchangeWastageDeduction.toStringAsFixed(3);
+                    }
+                  });
+                },
+              ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -1346,6 +1439,16 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         Text('₹${exchangeRate.toStringAsFixed(2)}/gm'),
                       ],
                     ),
+                    if (exchangeWastageDeduction > 0) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Net Weight:'),
+                          Text('${currentExchangeNetWeight.toStringAsFixed(3)} gm'),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1420,6 +1523,10 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                                   style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
                                 Text('${item.weightGm.toStringAsFixed(3)}gm @ ₹${item.ratePerGram.toStringAsFixed(2)}/gm'),
+                                if (item.wastageDeductionGm > 0)
+                                  Text('Wastage Deduction: ${item.wastageDeductionGm.toStringAsFixed(3)}gm'),
+                                if (item.wastageDeductionGm > 0)
+                                  Text('Net Weight: ${item.netWeightGm.toStringAsFixed(3)}gm'),
                                 Text(
                                   'Value: - ₹${item.value.round()}',
                                   style: const TextStyle(
@@ -1641,6 +1748,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     wastageController.dispose();
     makingChargesController.dispose();
     exchangeWeightController.dispose();
+    exchangeWastageController.dispose();
     for (var controller in metalRateControllers.values) {
       controller.dispose();
     }

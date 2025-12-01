@@ -402,10 +402,27 @@ void main() {
     final item = ExchangeItem(
       type: 'Gold 22K/916',
       weightGm: 10.0,
+      wastageDeductionGm: 0.0,
       ratePerGram: 6000.0,
     );
 
+    // Net weight = 10 - 0 = 10
+    expect(item.netWeightGm, 10.0);
     // Value = 10 * 6000 = 60000
     expect(item.value, 60000.0);
+  });
+
+  test('ExchangeItem with wastage deduction calculates correctly', () {
+    final item = ExchangeItem(
+      type: 'Silver',
+      weightGm: 100.0,
+      wastageDeductionGm: 30.0, // 30% automatic deduction for silver
+      ratePerGram: 196.0,
+    );
+
+    // Net weight = 100 - 30 = 70
+    expect(item.netWeightGm, 70.0);
+    // Value = 70 * 196 = 13720
+    expect(item.value, 13720.0);
   });
 }
