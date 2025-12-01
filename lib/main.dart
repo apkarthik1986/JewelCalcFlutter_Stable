@@ -1252,6 +1252,16 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                const Text('Subtotal:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('₹${amountAfterDiscount.round()}',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 const Text('CGST 1.5%:'),
                 Text('₹${cgstAmount.toStringAsFixed(2)}'),
               ],

@@ -267,6 +267,21 @@ void main() {
     expect(item.itemTotalWithGst, 68340.50);
   });
 
+  testWidgets('Subtotal is displayed in GST section', (WidgetTester tester) async {
+    await tester.pumpWidget(const JewelCalcApp());
+
+    // Scroll to find the GST section (use .first to target the main page's SingleChildScrollView)
+    await tester.drag(find.byType(SingleChildScrollView).first, const Offset(0, -300));
+    await tester.pumpAndSettle();
+
+    // Verify that Subtotal label exists
+    expect(find.text('Subtotal:'), findsOneWidget);
+    
+    // Verify CGST and SGST labels also exist
+    expect(find.text('CGST 1.5%:'), findsOneWidget);
+    expect(find.text('SGST 1.5%:'), findsOneWidget);
+  });
+
   testWidgets('Exchange section exists and supports all metal types', (WidgetTester tester) async {
     await tester.pumpWidget(const JewelCalcApp());
 
