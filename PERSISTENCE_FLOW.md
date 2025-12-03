@@ -113,22 +113,7 @@ initState() Called
          ▼
 _loadBaseValues() Called
          │
-         ├─────────► Check Date in SharedPreferences
-         │                     │
-         │                     ▼
-         │           Is it a new day?
-         │                     │
-         │          ┌──────────┴──────────┐
-         │          │                     │
-         │         Yes                   No
-         │          │                     │
-         │          ▼                     ▼
-         │   Reset Base Values    Keep Base Values
-         │   (rates, wastage)     (use stored values)
-         │          │                     │
-         │          └──────────┬──────────┘
-         │                     │
-         ▼                     ▼
+         ▼
 Load Base Values from SharedPreferences
          │
          ▼
@@ -161,8 +146,7 @@ App Ready with Restored Data
 │                    Day 1 (Monday)                          │
 ├───────────────────────────────────────────────────────────┤
 │ 09:00 AM │ User opens app                                 │
-│          │ - Base values: 0 (new day reset)              │
-│          │ - Form data: Empty (first use)                │
+│          │ - All data: Empty (first use)                 │
 ├──────────┼───────────────────────────────────────────────┤
 │ 09:05 AM │ User sets gold rate: 6000                     │
 │          │ - Saved to SharedPreferences                  │
@@ -189,11 +173,11 @@ App Ready with Restored Data
 │                    Day 2 (Tuesday)                         │
 ├───────────────────────────────────────────────────────────┤
 │ 09:00 AM │ User opens app                                 │
-│          │ - Base values: 0 (RESET - new day)           │
+│          │ - Gold rate: 6000 (PERSISTED from yesterday) │
 │          │ - Customer: "John Doe" (PERSISTED)            │
 │          │ - Items: All 3 items (PERSISTED)              │
 ├──────────┼───────────────────────────────────────────────┤
-│ 09:05 AM │ User sets gold rate: 6100 (new rate)         │
+│ 09:05 AM │ User updates gold rate: 6100                  │
 │          │ - Saved to SharedPreferences                  │
 ├──────────┼───────────────────────────────────────────────┤
 │ 09:10 AM │ User adds 2 more items (continues work)       │
@@ -208,16 +192,19 @@ App Ready with Restored Data
 ┌─────────────────┬──────────────────┬──────────────────────┐
 │   Data Type     │  Reset Trigger   │   Persistence Scope  │
 ├─────────────────┼──────────────────┼──────────────────────┤
-│ Metal Rates     │ Midnight (daily) │ Within same day      │
-│ Wastage %       │ Midnight (daily) │ Within same day      │
-│ Making Charges  │ Midnight (daily) │ Within same day      │
-├─────────────────┼──────────────────┼──────────────────────┤
+│ Metal Rates     │ Manual reset     │ Indefinite           │
+│ Wastage %       │ Manual reset     │ Indefinite           │
+│ Making Charges  │ Manual reset     │ Indefinite           │
 │ Customer Info   │ Manual reset     │ Indefinite           │
 │ Items List      │ Manual reset     │ Indefinite           │
 │ Exchange Items  │ Manual reset     │ Indefinite           │
 │ Current Input   │ Manual reset     │ Indefinite           │
 │ Discount State  │ Manual reset     │ Indefinite           │
 └─────────────────┴──────────────────┴──────────────────────┘
+
+Note: All data persists indefinitely. Base values can be reset 
+via "Reset to Defaults" in Settings. Form data can be reset via 
+"Reset All" button on main screen.
 ```
 
 ## Storage Keys
@@ -226,7 +213,6 @@ All data is stored in SharedPreferences with the following keys:
 
 ### Base Values
 ```
-last_date              → "2024-01-15"
 rate_gold_22k         → 6000.0
 rate_gold_20k         → 5500.0
 rate_gold_18k         → 5000.0
@@ -236,6 +222,7 @@ silver_wastage        → 8.0
 gold_mc               → 350.0
 silver_mc             → 200.0
 ```
+Note: "last_date" key is no longer used as base values persist indefinitely.
 
 ### Form Data
 ```

@@ -16,16 +16,17 @@ The application uses `SharedPreferences` for local data storage, which provides:
 
 ### What Data Persists
 
-#### Base Values (Reset Daily at Midnight)
-These values are intended for daily configuration and automatically reset to zero at midnight:
+#### All Data (Persists Indefinitely)
+All data in the application persists indefinitely across app sessions until manually cleared by the user:
+
+**Base Values:**
 - Metal rates per gram (Gold 22K/916, Gold 20K/833, Gold 18K/750, Silver)
 - Gold wastage percentage
 - Silver wastage percentage
 - Gold making charge per gram
 - Silver making charge per gram
 
-#### Form Data (Persists Indefinitely)
-These values persist across all app sessions until manually cleared by the user:
+**Form Data:**
 - Bill number
 - Customer account number
 - Customer name
@@ -110,8 +111,8 @@ This allows complex objects to be stored in SharedPreferences as String lists.
 2. User enters customer information → Auto-saves after 500ms
 3. User adds items → Each item saves immediately
 4. User closes app → All data preserved
-5. User reopens app next day → Form data restored, base values reset to 0
-6. User updates base values in settings → Base values saved for the day
+5. User reopens app (any time, any day) → All data restored (both form data and base values)
+6. User updates base values in settings → Base values saved indefinitely
 7. User continues working → All changes persist automatically
 
 ### Reset Functionality
@@ -123,7 +124,7 @@ The Reset All button (refresh icon) clears:
 - Discount settings
 - Persisted form state in storage
 
-Base values are NOT cleared by the reset button - they persist for the day and reset at midnight.
+Base values are NOT cleared by the Reset All button. To reset base values, use the "Reset to Defaults" button in the Settings dialog.
 
 ### Settings Configuration
 The Settings dialog allows configuration of:
@@ -131,7 +132,7 @@ The Settings dialog allows configuration of:
 - Wastage percentages
 - Making charges
 
-These values persist throughout the day and automatically reset at midnight for fresh daily configuration.
+These values persist indefinitely across all app sessions until manually reset using the "Reset to Defaults" button in the Settings dialog.
 
 ## Technical Considerations
 
@@ -181,9 +182,9 @@ To verify persistence is working correctly:
 2. Add multiple items and close the app → All items should be present on reopen
 3. Set discount values and close the app → Discount settings should be restored
 4. Add exchange items and close the app → Exchange items should be present
-5. Test across midnight boundary → Base values should reset, form data should remain
-6. Test Reset button → All form data should be cleared
-7. Test base value settings → Values should persist throughout the day
+5. Set base values (rates, wastage) and close the app → Base values should be restored on reopen
+6. Test Reset All button → All form data should be cleared, base values should remain
+7. Test "Reset to Defaults" in Settings → Base values should be reset to zero
 
 ## Conclusion
 

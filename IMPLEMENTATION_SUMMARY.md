@@ -18,10 +18,10 @@ Make all entered data persistent throughout the app, for both base values and va
    - Prevents excessive storage operations
    - Provides seamless user experience
 
-3. **Selective Daily Reset**
-   - Base values (rates, wastage %, making charges) reset at midnight
-   - Form data (customer info, items) NEVER resets automatically
-   - This matches the business requirement where rates change daily but orders persist
+3. **Complete Data Persistence**
+   - All data (base values and form data) persists indefinitely
+   - Nothing resets automatically - all data preserved across app sessions
+   - Manual reset options available for both base values (Settings) and form data (Reset All)
 
 4. **Robust Implementation**
    - Proper error handling for corrupt/missing data
@@ -65,12 +65,11 @@ void _debouncedSaveFormState() {
 }
 ```
 
-4. Modified `_loadBaseValues()` to NOT clear form state on date change:
+4. Modified `_loadBaseValues()` to remove date checking and daily reset logic:
 ```dart
-if (lastDate != today) {
-  await _resetToDefaults();
-  // Do NOT clear form state - keep customer data and items persistent
-}
+// Removed date checking logic
+// Base values now persist indefinitely just like form data
+// Load all data from SharedPreferences on app start
 ```
 
 5. Added `_debouncedSaveFormState()` calls to all user input handlers:
@@ -125,20 +124,21 @@ Since we don't have an active Flutter environment in this session, the following
    - Reopen app
    - ✅ Verify name is saved (tests auto-save worked)
 
-4. **Daily Reset Test**
+4. **Base Values Persistence Test**
    - Set gold rate to 6000
    - Enter customer name
    - Add items
-   - Change system date to next day (or wait)
-   - Open app
-   - ✅ Verify gold rate is 0 (reset)
+   - Close and reopen app (or change date)
+   - ✅ Verify gold rate is still 6000 (persisted)
    - ✅ Verify customer name and items still present (persisted)
 
 5. **Reset Button Test**
    - Enter data and add items
    - Tap Reset All button
    - ✅ Verify all form data is cleared
-   - ✅ Verify base values remain (not cleared by reset)
+   - ✅ Verify base values remain (not cleared by Reset All)
+   - Open Settings and tap "Reset to Defaults"
+   - ✅ Verify base values are reset to 0
 
 6. **Exchange Items Test**
    - Add exchange items

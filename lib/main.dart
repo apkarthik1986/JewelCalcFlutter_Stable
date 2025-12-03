@@ -216,15 +216,8 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   Future<void> _loadBaseValues() async {
     final prefs = await SharedPreferences.getInstance();
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final lastDate = prefs.getString('last_date') ?? '';
 
-    // Reset base values only if new day (but keep form state)
-    if (lastDate != today) {
-      await _resetToDefaults();
-      // Do NOT clear form state - keep customer data and items persistent
-    }
-
+    // Load base values from storage - they now persist indefinitely
     setState(() {
       metalRates['Gold 22K/916'] = prefs.getDouble('rate_gold_22k') ?? 0.0;
       metalRates['Gold 20K/833'] = prefs.getDouble('rate_gold_20k') ?? 0.0;
@@ -239,7 +232,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       _updateSettingsControllers();
     });
 
-    // Load form state after base values are loaded - always load regardless of date
+    // Load form state after base values are loaded
     await _loadFormState();
   }
 
@@ -260,9 +253,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   Future<void> _saveBaseValues() async {
     final prefs = await SharedPreferences.getInstance();
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-    await prefs.setString('last_date', today);
     await prefs.setDouble('rate_gold_22k', metalRates['Gold 22K/916']!);
     await prefs.setDouble('rate_gold_20k', metalRates['Gold 20K/833']!);
     await prefs.setDouble('rate_gold_18k', metalRates['Gold 18K/750']!);
@@ -405,7 +396,6 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   Future<void> _resetToDefaults() async {
     final prefs = await SharedPreferences.getInstance();
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     setState(() {
       metalRates = {
@@ -429,7 +419,6 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       silverMcController.text = '';
     });
 
-    await prefs.setString('last_date', today);
     await prefs.setDouble('rate_gold_22k', 0.0);
     await prefs.setDouble('rate_gold_20k', 0.0);
     await prefs.setDouble('rate_gold_18k', 0.0);
