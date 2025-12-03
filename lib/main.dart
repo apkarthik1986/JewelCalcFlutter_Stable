@@ -158,6 +158,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   final TextEditingController weightController = TextEditingController();
   final TextEditingController wastageController = TextEditingController();
   final TextEditingController makingChargesController = TextEditingController();
+  
+  // Timer for debounced auto-save
+  Timer? _saveTimer;
 
   // Settings dialog controllers
   final Map<String, TextEditingController> metalRateControllers = {};
@@ -200,21 +203,21 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     silverWastageController = TextEditingController();
     goldMcController = TextEditingController();
     silverMcController = TextEditingController();
+    
+    // Add listeners for auto-save on customer information changes
+    billNumberController.addListener(_debouncedSaveFormState);
+    customerAccController.addListener(_debouncedSaveFormState);
+    customerNameController.addListener(_debouncedSaveFormState);
+    addressController.addListener(_debouncedSaveFormState);
+    mobileNumberController.addListener(_debouncedSaveFormState);
+    
     _loadBaseValues();
   }
 
   Future<void> _loadBaseValues() async {
     final prefs = await SharedPreferences.getInstance();
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final lastDate = prefs.getString('last_date') ?? '';
 
-    // Reset if new day
-    if (lastDate != today) {
-      await _resetToDefaults();
-      await _clearFormState();
-      return;
-    }
-
+    // Load base values from storage - they now persist indefinitely
     setState(() {
       metalRates['Gold 22K/916'] = prefs.getDouble('rate_gold_22k') ?? 0.0;
       metalRates['Gold 20K/833'] = prefs.getDouble('rate_gold_20k') ?? 0.0;
@@ -250,9 +253,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   Future<void> _saveBaseValues() async {
     final prefs = await SharedPreferences.getInstance();
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-    await prefs.setString('last_date', today);
     await prefs.setDouble('rate_gold_22k', metalRates['Gold 22K/916']!);
     await prefs.setDouble('rate_gold_20k', metalRates['Gold 20K/833']!);
     await prefs.setDouble('rate_gold_18k', metalRates['Gold 18K/750']!);
@@ -382,9 +383,19 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     await prefs.remove('form_exchange_items');
   }
 
+  /// Debounced save to avoid excessive writes while user is typing
+  void _debouncedSaveFormState() {
+    // Cancel any existing timer
+    _saveTimer?.cancel();
+    
+    // Start a new timer - save after 500ms of inactivity
+    _saveTimer = Timer(const Duration(milliseconds: 500), () {
+      unawaited(_saveFormState());
+    });
+  }
+
   Future<void> _resetToDefaults() async {
     final prefs = await SharedPreferences.getInstance();
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     setState(() {
       metalRates = {
@@ -408,7 +419,6 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       silverMcController.text = '';
     });
 
-    await prefs.setString('last_date', today);
     await prefs.setDouble('rate_gold_22k', 0.0);
     await prefs.setDouble('rate_gold_20k', 0.0);
     await prefs.setDouble('rate_gold_18k', 0.0);
@@ -1157,6 +1167,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   wastageController.text = wastageGm.toStringAsFixed(3);
                   makingCharges = _calculateMakingCharges();
                 });
+                _debouncedSaveFormState();
               },
             ),
             const SizedBox(height: 12),
@@ -1193,6 +1204,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         wastageController.text = wastageGm.toStringAsFixed(3);
                         makingCharges = _calculateMakingCharges();
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                 ),
@@ -1210,6 +1222,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                       setState(() {
                         wastageGm = double.tryParse(value) ?? 0.0;
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                 ),
@@ -1272,6 +1285,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   mcType = newSelection.first;
                   makingCharges = _calculateMakingCharges();
                 });
+                _debouncedSaveFormState();
               },
             ),
             const SizedBox(height: 12),
@@ -1294,6 +1308,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                           makingCharges = minMakingCharge;
                         }
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                   const SizedBox(height: 8),
@@ -1325,6 +1340,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         mcPercentage = double.tryParse(value) ?? 0.0;
                         makingCharges = _calculateMakingCharges();
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                   const SizedBox(height: 8),
@@ -1419,6 +1435,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                 setState(() {
                   discountType = newSelection.first;
                 });
+                _debouncedSaveFormState();
               },
             ),
             const SizedBox(height: 12),
@@ -1433,6 +1450,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   setState(() {
                     discountAmount = double.tryParse(value) ?? 0.0;
                   });
+                  _debouncedSaveFormState();
                 },
               )
             else if (discountType == 'Percentage')
@@ -1449,6 +1467,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                       setState(() {
                         discountPercentage = double.tryParse(value) ?? 0.0;
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                   const SizedBox(height: 8),
@@ -1558,6 +1577,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                           exchangeWastageController.clear();
                         }
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                 ),
@@ -1580,6 +1600,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                           exchangeWastageController.text = exchangeWastageDeduction.toStringAsFixed(3);
                         }
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                 ),
@@ -1606,6 +1627,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                       exchangeWastageController.text = exchangeWastageDeduction.toStringAsFixed(3);
                     }
                   });
+                  _debouncedSaveFormState();
                 },
               ),
               const SizedBox(height: 12),
@@ -1924,6 +1946,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   @override
   void dispose() {
+    // Cancel any pending save timer
+    _saveTimer?.cancel();
+    
     billNumberController.dispose();
     customerAccController.dispose();
     customerNameController.dispose();
