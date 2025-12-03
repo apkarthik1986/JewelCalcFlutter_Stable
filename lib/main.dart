@@ -158,6 +158,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
   final TextEditingController weightController = TextEditingController();
   final TextEditingController wastageController = TextEditingController();
   final TextEditingController makingChargesController = TextEditingController();
+  
+  // Timer for debounced auto-save
+  Timer? _saveTimer;
 
   // Settings dialog controllers
   final Map<String, TextEditingController> metalRateControllers = {};
@@ -200,6 +203,14 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     silverWastageController = TextEditingController();
     goldMcController = TextEditingController();
     silverMcController = TextEditingController();
+    
+    // Add listeners for auto-save on customer information changes
+    billNumberController.addListener(_debouncedSaveFormState);
+    customerAccController.addListener(_debouncedSaveFormState);
+    customerNameController.addListener(_debouncedSaveFormState);
+    addressController.addListener(_debouncedSaveFormState);
+    mobileNumberController.addListener(_debouncedSaveFormState);
+    
     _loadBaseValues();
   }
 
@@ -208,11 +219,10 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final lastDate = prefs.getString('last_date') ?? '';
 
-    // Reset if new day
+    // Reset base values only if new day (but keep form state)
     if (lastDate != today) {
       await _resetToDefaults();
-      await _clearFormState();
-      return;
+      // Do NOT clear form state - keep customer data and items persistent
     }
 
     setState(() {
@@ -229,7 +239,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
       _updateSettingsControllers();
     });
 
-    // Load form state after base values are loaded
+    // Load form state after base values are loaded - always load regardless of date
     await _loadFormState();
   }
 
@@ -380,6 +390,17 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
     await prefs.remove('form_exchange_wastage');
     await prefs.remove('form_items');
     await prefs.remove('form_exchange_items');
+  }
+
+  /// Debounced save to avoid excessive writes while user is typing
+  void _debouncedSaveFormState() {
+    // Cancel any existing timer
+    _saveTimer?.cancel();
+    
+    // Start a new timer - save after 500ms of inactivity
+    _saveTimer = Timer(const Duration(milliseconds: 500), () {
+      unawaited(_saveFormState());
+    });
   }
 
   Future<void> _resetToDefaults() async {
@@ -1157,6 +1178,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   wastageController.text = wastageGm.toStringAsFixed(3);
                   makingCharges = _calculateMakingCharges();
                 });
+                _debouncedSaveFormState();
               },
             ),
             const SizedBox(height: 12),
@@ -1193,6 +1215,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         wastageController.text = wastageGm.toStringAsFixed(3);
                         makingCharges = _calculateMakingCharges();
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                 ),
@@ -1210,6 +1233,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                       setState(() {
                         wastageGm = double.tryParse(value) ?? 0.0;
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                 ),
@@ -1272,6 +1296,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   mcType = newSelection.first;
                   makingCharges = _calculateMakingCharges();
                 });
+                _debouncedSaveFormState();
               },
             ),
             const SizedBox(height: 12),
@@ -1294,6 +1319,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                           makingCharges = minMakingCharge;
                         }
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                   const SizedBox(height: 8),
@@ -1325,6 +1351,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                         mcPercentage = double.tryParse(value) ?? 0.0;
                         makingCharges = _calculateMakingCharges();
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                   const SizedBox(height: 8),
@@ -1419,6 +1446,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                 setState(() {
                   discountType = newSelection.first;
                 });
+                _debouncedSaveFormState();
               },
             ),
             const SizedBox(height: 12),
@@ -1433,6 +1461,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                   setState(() {
                     discountAmount = double.tryParse(value) ?? 0.0;
                   });
+                  _debouncedSaveFormState();
                 },
               )
             else if (discountType == 'Percentage')
@@ -1449,6 +1478,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                       setState(() {
                         discountPercentage = double.tryParse(value) ?? 0.0;
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                   const SizedBox(height: 8),
@@ -1558,6 +1588,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                           exchangeWastageController.clear();
                         }
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                 ),
@@ -1580,6 +1611,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                           exchangeWastageController.text = exchangeWastageDeduction.toStringAsFixed(3);
                         }
                       });
+                      _debouncedSaveFormState();
                     },
                   ),
                 ),
@@ -1606,6 +1638,7 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
                       exchangeWastageController.text = exchangeWastageDeduction.toStringAsFixed(3);
                     }
                   });
+                  _debouncedSaveFormState();
                 },
               ),
               const SizedBox(height: 12),
@@ -1924,6 +1957,9 @@ class _JewelCalcHomeState extends State<JewelCalcHome> {
 
   @override
   void dispose() {
+    // Cancel any pending save timer
+    _saveTimer?.cancel();
+    
     billNumberController.dispose();
     customerAccController.dispose();
     customerNameController.dispose();
