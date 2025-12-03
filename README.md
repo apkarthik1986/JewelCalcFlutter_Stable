@@ -203,12 +203,22 @@ All base values are automatically saved and persist throughout the day. They res
 
 ## 💾 Data Persistence
 
-The application automatically saves your base values (metal rates, wastage percentages, and making charges) to local storage using SharedPreferences. This ensures that:
+The application implements comprehensive data persistence using SharedPreferences to ensure all your data is automatically saved:
 
-- **Your settings persist** across app restarts
-- **Values are maintained** throughout the entire day
-- **Automatic reset** occurs at midnight (based on system time)
-- **No manual intervention** needed - the app handles everything automatically
+### Base Values (Daily Reset)
+- Metal rates, wastage percentages, and making charges
+- **Persist throughout the day** and automatically reset at midnight
+- Intended for daily price updates
+
+### Form Data (Indefinite Persistence)
+- Customer information (bill number, account, name, address, mobile)
+- All added items and exchange items
+- Current input state, discount settings
+- **Persists across app restarts** until manually cleared
+- **Auto-saves as you type** (500ms after you stop typing)
+- **Never resets automatically** - only cleared when you tap the Reset button
+
+**Note:** Data persists across app restarts and device reboots but is lost if the app is uninstalled. For details, see [DATA_PERSISTENCE.md](DATA_PERSISTENCE.md).
 
 ## 📝 License
 
